@@ -851,21 +851,14 @@
       }
     }
 
-    // 4. Order Type Detection & Entry / Stop-Loss Price Automation
-    const btnLimit = document.getElementById('Limit');
-    const btnStop = document.getElementById('Stop');
-
-    let isLimitSelected = btnLimit && btnLimit.getAttribute('aria-selected') === 'true';
-    let isStopSelected = btnStop && btnStop.getAttribute('aria-selected') === 'true';
-
+    // 4. Entry / Stop-Loss Price Automation
+    // data-qa-id contains space-separated tokens, so use ~= instead of an exact match.
+    const entryInputDom = document.querySelector(
+      'input[data-qa-id~="order-ticket-absolute-price-input"]'
+    );
     let autoEntryPrice = 0;
-
-    if (isLimitSelected) {
-      const limitInput = document.getElementById('absolute-limit-price-field');
-      if (limitInput) autoEntryPrice = cleanAndParseFloat(limitInput.value);
-    } else if (isStopSelected) {
-      const stopInput = document.getElementById('absolute-stop-price-field');
-      if (stopInput) autoEntryPrice = cleanAndParseFloat(stopInput.value);
+    if (entryInputDom) {
+      autoEntryPrice = cleanAndParseFloat(entryInputDom.value);
     }
 
     const slInputDom = document.querySelector('[data-qa-id*="order-ticket-stop-loss-input"]');
