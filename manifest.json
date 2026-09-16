@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Systematic Trading",
+  "version": "1.0",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "systematic-trading@local-dev"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.tradingview.com/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "livermore.jpg"
+      ],
+      "matches": [
+        "https://*.tradingview.com/*"
+      ]
+    }
+  ]
+}
