@@ -74,373 +74,123 @@
 
   const extRuntime = (typeof browser !== 'undefined' && browser.runtime) ? browser.runtime : chrome.runtime;
 
-  const panelMarkup = `
-    <style>
-      .panel {
-        width: 340px;
-        background: #1c2030;
-        border: 1px solid #2a2e39;
-        border-radius: 8px;
-        padding: 16px;
-        color: #d1d4dc;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        display: block;
-      }
-      .panel.hidden { display: none; }
+  // Construct the panel with DOM APIs instead of parsing HTML strings.
+  // This also avoids createContextualFragment and innerHTML validator warnings.
+  const panelStyle = document.createElement('style');
+  panelStyle.textContent = "\n      .panel {\n        width: 340px;\n        background: #1c2030;\n        border: 1px solid #2a2e39;\n        border-radius: 8px;\n        padding: 16px;\n        color: #d1d4dc;\n        box-shadow: 0 10px 25px rgba(0,0,0,0.5);\n        display: block;\n      }\n      .panel.hidden { display: none; }\n\n      .global-header-row {\n        position: relative;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        width: 100%;\n        margin-bottom: 14px;\n        padding: 4px 0;\n      }\n      .header { \n        font-size: 14px; \n        font-weight: 800; \n        color: #2962ff; \n        letter-spacing: 1.5px; \n        text-transform: uppercase; \n        cursor: move; \n        text-align: center;\n        width: 100%;\n        padding: 0 32px;\n      }\n      \n      .window-icon-btn {\n        position: absolute;\n        right: 0;\n        top: 50%;\n        transform: translateY(-50%);\n        background: transparent;\n        border: none;\n        color: #787b86;\n        cursor: pointer;\n        padding: 6px;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: color 0.15s, transform 0.15s;\n        border-radius: 4px;\n      }\n      .window-icon-btn:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.05); }\n      .window-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }\n\n      .idol-quote-section {\n        display: flex;\n        align-items: center;\n        gap: 14px;\n        background: #131722;\n        border: 1px solid #2a2e39;\n        border-radius: 6px;\n        padding: 12px 14px;\n        margin-bottom: 14px;\n      }\n      .idol-avatar-box {\n        width: 48px;\n        height: 48px;\n        border-radius: 50%;\n        border: 2px solid #2a2e39;\n        overflow: hidden;\n        flex-shrink: 0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        background: #1c2030;\n      }\n      .idol-avatar-box img {\n        width: 100%;\n        height: 100%;\n        object-fit: cover;\n      }\n      .idol-text-box {\n        flex: 1;\n        display: flex;\n        align-items: center;\n      }\n      .idol-quote-content {\n        font-size: 14px;\n        line-height: 18px;\n        color: #e0e3eb;\n        font-style: italic;\n        font-weight: 600;\n      }\n\n      .expand-trigger-anchor {\n        position: fixed;\n        right: 0;\n        top: 50%;\n        transform: translateY(-50%);\n        width: 24px;\n        height: 60px;\n        background: #1c2030;\n        border: 1px solid #2a2e39;\n        border-right: none;\n        border-radius: 8px 0 0 8px;\n        display: none;\n        align-items: center;\n        justify-content: center;\n        color: #2962ff;\n        cursor: pointer;\n        box-shadow: -4px 0 15px rgba(0,0,0,0.4);\n        z-index: 99999999;\n        transition: color 0.15s, background-color 0.15s;\n      }\n      .expand-trigger-anchor:hover { background: #131722; color: #00e676; }\n      .expand-trigger-anchor.visible { display: flex; }\n      .expand-trigger-anchor svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }\n\n      .price { font-size: 24px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 4px; }\n      \n      .direction-badge { \n        display: none; \n        font-size: 14px; \n        font-weight: 800; \n        text-align: center; \n        margin-bottom: 14px; \n        border-bottom: 1px solid #2a2e39; \n        padding-bottom: 10px; \n      }\n      .direction-badge.visible { display: block; }\n      .dir-long { color: #00e676; }\n      .dir-short { color: #ff5252; }\n\n      .grid { display: flex; gap: 12px; margin-bottom: 12px; }\n      .grid > div { flex: 1; }\n      label { display: block; font-size: 14px; color: #787b86; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; }\n      input { width: 100%; padding: 8px 10px; background: #131722; border: 1px solid #2a2e39; border-radius: 4px; color: #ffffff; box-sizing: border-box; font-size: 14px; }\n      input:focus { border-color: #2962ff; outline: none; }\n      .read-only-badge { font-size: 11px; background: #2962ff22; color: #2962ff; padding: 2px 5px; border-radius: 3px; float: right; margin-top: 2px; }\n      \n      .tracker-block { \n        background: #131722; \n        padding: 10px; \n        border-radius: 6px; \n        border: 1px solid #2a2e39; \n        margin-bottom: 12px; \n      }\n      .tracker-flex { \n        display: flex; \n        justify-content: space-between; \n        align-items: center; \n        font-size: 14px; \n      }\n      .loss-input-row { display: flex; gap: 8px; margin-top: 10px; margin-bottom: 10px; }\n      \n      .inline-add-icon-btn { \n        background: transparent; \n        border: 1px solid #2a2e39; \n        color: #787b86; \n        padding: 0 12px; \n        border-radius: 4px; \n        cursor: pointer; \n        transition: color 0.15s, background-color 0.15s, border-color 0.15s; \n        display: flex;\n        align-items: center;\n        justify-content: center;\n      }\n      .inline-add-icon-btn:hover { color: #ffffff; background-color: #2a2e39; border-color: #787b86; }\n      .inline-add-icon-btn svg { width: 14px; height: 14px; fill: currentColor; }\n\n      .action-icon-btn {\n        background: transparent;\n        border: none;\n        color: #787b86;\n        cursor: pointer;\n        padding: 4px;\n        border-radius: 4px;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: color 0.15s, background-color 0.15s;\n      }\n      .action-icon-btn:hover { color: #ffffff; background-color: #2a2e39; }\n      .action-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }\n\n      .loss-log-list { \n        max-height: 125px; \n        overflow-y: auto; \n        border-top: 1px solid #2a2e39; \n        padding-top: 8px;\n        display: flex;\n        flex-direction: column;\n        gap: 6px;\n      }\n      .loss-log-list::-webkit-scrollbar { width: 4px; }\n      .loss-log-list::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 2px; }\n      \n      .loss-log-item {\n        display: flex;\n        justify-content: space-between;\n        align-items: center;\n        background: #1c2030;\n        padding: 6px 10px;\n        border-radius: 4px;\n        border: 1px solid #2a2e39;\n      }\n      .log-meta-stack { display: flex; flex-direction: column; gap: 2px; }\n      .log-primary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }\n      .log-ticker-name { color: #b2b5be; }\n      .log-val-amount { color: #ff5252; font-weight: bold; }\n      .log-time-secondary { font-size: 11px; color: #5d606b; font-variant-numeric: tabular-nums; font-weight: normal; }\n      \n      .remove-log-btn {\n        background: transparent;\n        border: none;\n        padding: 4px;\n        cursor: pointer;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        color: #787b86;\n        border-radius: 3px;\n        transition: color 0.15s, background 0.15s;\n      }\n      .remove-log-btn:hover { color: #ff5252; background: rgba(255, 82, 82, 0.15); }\n      .remove-log-btn svg { width: 12px; height: 12px; fill: currentColor; }\n\n      .output-area { background: #131722; padding: 14px; border-radius: 6px; border: 1px solid #2a2e39; margin-top: 16px; }\n      .output-lbl { font-size: 14px; color: #787b86; text-transform: uppercase; font-weight: bold; }\n      .output-val { font-size: 26px; font-weight: bold; color: #00e676; margin: 6px 0 2px 0; font-variant-numeric: tabular-nums; }\n      \n      .aux-container { font-size: 13px; color: #787b86; margin-bottom: 6px; display: flex; justify-content: space-between; }\n      .aux-val { color: #b2b5be; font-weight: 500; font-variant-numeric: tabular-nums; }\n      .aux-val-danger { color: #ff5252; font-weight: 700; font-variant-numeric: tabular-nums; }\n\n      .apply-btn { width: 100%; border: none; color: #ffffff; background: #2962ff; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.15s; margin-top: 8px; }\n      .apply-btn:hover { background: #1e4bd8; }\n      .apply-btn.success { background: #00e676; color: #131722; }\n      .apply-btn:disabled { background: #2a2e39; color: #787b86; cursor: not-allowed; }\n      \n      .warning { display: none; background: rgba(255, 82, 82, 0.15); border: 1px solid #ff5252; color: #ff5252; padding: 8px; border-radius: 4px; font-size: 14px; margin-top: 10px; font-weight: bold; text-align: center; }\n      .warning.active { display: block; }\n    ";
+  shadowRoot.appendChild(panelStyle);
 
-      .global-header-row {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        margin-bottom: 14px;
-        padding: 4px 0;
-      }
-      .header { 
-        font-size: 14px; 
-        font-weight: 800; 
-        color: #2962ff; 
-        letter-spacing: 1.5px; 
-        text-transform: uppercase; 
-        cursor: move; 
-        text-align: center;
-        width: 100%;
-        padding: 0 32px;
-      }
-      
-      .window-icon-btn {
-        position: absolute;
-        right: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        background: transparent;
-        border: none;
-        color: #787b86;
-        cursor: pointer;
-        padding: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: color 0.15s, transform 0.15s;
-        border-radius: 4px;
-      }
-      .window-icon-btn:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.05); }
-      .window-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }
+  const svgNS = 'http://www.w3.org/2000/svg';
+  function addPanelElement(parent, tag, attrs = {}, text = null) {
+    const element = (tag === 'svg' || tag === 'path' || tag === 'polyline')
+      ? document.createElementNS(svgNS, tag)
+      : document.createElement(tag);
+    for (const [name, value] of Object.entries(attrs)) {
+      element.setAttribute(name, value);
+    }
+    if (text !== null) element.textContent = text;
+    parent.appendChild(element);
+    return element;
+  }
 
-      .idol-quote-section {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        background: #131722;
-        border: 1px solid #2a2e39;
-        border-radius: 6px;
-        padding: 12px 14px;
-        margin-bottom: 14px;
-      }
-      .idol-avatar-box {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        border: 2px solid #2a2e39;
-        overflow: hidden;
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #1c2030;
-      }
-      .idol-avatar-box img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-      .idol-text-box {
-        flex: 1;
-        display: flex;
-        align-items: center;
-      }
-      .idol-quote-content {
-        font-size: 14px;
-        line-height: 18px;
-        color: #e0e3eb;
-        font-style: italic;
-        font-weight: 600;
-      }
+  const panelEl1 = addPanelElement(shadowRoot, "div", {"class": "expand-trigger-anchor", "id": "widget-expand-trigger", "title": "Expand AlphaSize Panel"});
+  const panelEl2 = addPanelElement(panelEl1, "svg", {"viewBox": "0 0 24 24"});
+  const panelEl3 = addPanelElement(panelEl2, "polyline", {"points": "15 18 9 12 15 6"});
+  const panelEl4 = addPanelElement(shadowRoot, "div", {"class": "panel", "id": "main-widget-panel"});
+  const panelEl5 = addPanelElement(panelEl4, "div", {"class": "global-header-row"});
+  const panelEl6 = addPanelElement(panelEl5, "div", {"class": "header", "id": "drag-handle"});
+  const panelEl7 = addPanelElement(panelEl5, "button", {"class": "window-icon-btn", "id": "widget-minimize-trigger", "title": "Minimize Window"});
+  const panelEl8 = addPanelElement(panelEl7, "svg", {"viewBox": "0 0 24 24"});
+  const panelEl9 = addPanelElement(panelEl8, "path", {"d": "M19 13H5v-2h14v2z"});
+  const panelEl10 = addPanelElement(panelEl4, "div", {"class": "idol-quote-section"});
+  const panelEl11 = addPanelElement(panelEl10, "div", {"class": "idol-avatar-box"});
+  const panelEl12 = addPanelElement(panelEl11, "img", {"src": "", "alt": "Avatar"});
+  const panelEl13 = addPanelElement(panelEl10, "div", {"class": "idol-text-box"});
+  const panelEl14 = addPanelElement(panelEl13, "span", {"class": "idol-quote-content"});
+  panelEl14.appendChild(document.createTextNode("\"It never was my thinking that made the big money for me. It always was my sitting.\""));
+  const panelEl15 = addPanelElement(panelEl4, "div", {"class": "price", "id": "tv-price"});
+  panelEl15.appendChild(document.createTextNode("Connecting..."));
+  const panelEl16 = addPanelElement(panelEl4, "div", {"class": "direction-badge", "id": "tv-direction"});
+  panelEl16.appendChild(document.createTextNode("Opening Long"));
+  const panelEl17 = addPanelElement(panelEl4, "div", {"class": "tracker-block"});
+  const panelEl18 = addPanelElement(panelEl17, "div", {"class": "tracker-flex"});
+  const panelEl19 = addPanelElement(panelEl18, "div", {});
+  const panelEl20 = addPanelElement(panelEl19, "span", {"style": "color:#787b86; font-size: 14px; font-weight: bold; text-transform: uppercase; margin-right: 4px;"});
+  panelEl20.appendChild(document.createTextNode("Daily Loss:"));
+  const panelEl21 = addPanelElement(panelEl19, "span", {"id": "loss-display", "style": "font-weight: bold; color: #ffffff;"});
+  panelEl21.appendChild(document.createTextNode("$0.00"));
+  const panelEl22 = addPanelElement(panelEl18, "button", {"class": "action-icon-btn", "id": "clear-all-btn", "title": "Clear All Log Entries"});
+  const panelEl23 = addPanelElement(panelEl22, "svg", {"viewBox": "0 0 24 24"});
+  const panelEl24 = addPanelElement(panelEl23, "path", {"d": "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"});
+  const panelEl25 = addPanelElement(panelEl17, "div", {"class": "loss-input-row"});
+  const panelEl26 = addPanelElement(panelEl25, "input", {"type": "number", "id": "loss-adder", "placeholder": "Add loss ($)...", "style": "font-size: 14px; padding: 6px 8px;"});
+  const panelEl27 = addPanelElement(panelEl25, "button", {"class": "inline-add-icon-btn", "id": "add-loss-btn", "title": "Commit Log Entry"});
+  const panelEl28 = addPanelElement(panelEl27, "svg", {"viewBox": "0 0 24 24"});
+  const panelEl29 = addPanelElement(panelEl28, "path", {"d": "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"});
+  const panelEl30 = addPanelElement(panelEl17, "div", {"class": "loss-log-list", "id": "loss-log-list"});
+  const panelEl31 = addPanelElement(panelEl4, "div", {"class": "grid"});
+  const panelEl32 = addPanelElement(panelEl31, "div", {});
+  const panelEl33 = addPanelElement(panelEl32, "label", {});
+  panelEl33.appendChild(document.createTextNode("Equity ($)"));
+  const panelEl34 = addPanelElement(panelEl32, "input", {"type": "number", "id": "eq", "value": ""});
+  const panelEl35 = addPanelElement(panelEl31, "div", {});
+  const panelEl36 = addPanelElement(panelEl35, "label", {});
+  panelEl36.appendChild(document.createTextNode("Leverage"));
+  const panelEl37 = addPanelElement(panelEl35, "input", {"type": "number", "id": "lev", "value": ""});
+  const panelEl38 = addPanelElement(panelEl4, "div", {"class": "grid"});
+  const panelEl39 = addPanelElement(panelEl38, "div", {});
+  const panelEl40 = addPanelElement(panelEl39, "label", {});
+  panelEl40.appendChild(document.createTextNode("Risk (%)"));
+  const panelEl41 = addPanelElement(panelEl39, "input", {"type": "number", "id": "rsk", "step": "0.1", "value": ""});
+  const panelEl42 = addPanelElement(panelEl38, "div", {});
+  const panelEl43 = addPanelElement(panelEl42, "label", {});
+  panelEl43.appendChild(document.createTextNode("MAX DD (%)"));
+  const panelEl44 = addPanelElement(panelEl42, "input", {"type": "number", "id": "loss-cap", "step": "0.5", "value": ""});
+  const panelEl45 = addPanelElement(panelEl4, "div", {"class": "grid"});
+  const panelEl46 = addPanelElement(panelEl45, "div", {});
+  const panelEl47 = addPanelElement(panelEl46, "label", {});
+  panelEl47.appendChild(document.createTextNode("Entry Price"));
+  const panelEl48 = addPanelElement(panelEl46, "input", {"type": "number", "id": "entry-price", "step": "0.00001", "placeholder": "Type Entry..."});
+  const panelEl49 = addPanelElement(panelEl45, "div", {});
+  const panelEl50 = addPanelElement(panelEl49, "label", {});
+  panelEl50.appendChild(document.createTextNode("Stop Loss Price"));
+  const panelEl51 = addPanelElement(panelEl49, "input", {"type": "number", "id": "sl-price", "step": "0.00001", "placeholder": "Type SL..."});
+  const panelEl52 = addPanelElement(panelEl4, "div", {"style": "margin-bottom: 12px;"});
+  const panelEl53 = addPanelElement(panelEl52, "label", {});
+  panelEl53.appendChild(document.createTextNode("SL Distance "));
+  const panelEl54 = addPanelElement(panelEl53, "span", {"class": "read-only-badge"});
+  panelEl54.appendChild(document.createTextNode("AUTO"));
+  const panelEl55 = addPanelElement(panelEl52, "input", {"type": "text", "id": "sl-distance", "value": "0.00%", "disabled": "", "style": "opacity: 0.7; cursor: not-allowed;"});
+  const panelEl56 = addPanelElement(panelEl4, "div", {"class": "output-area"});
+  const panelEl57 = addPanelElement(panelEl56, "div", {"class": "output-lbl"});
+  panelEl57.appendChild(document.createTextNode("Amount (Tokens / Units)"));
+  const panelEl58 = addPanelElement(panelEl56, "div", {"class": "output-val", "id": "amount-display"});
+  panelEl58.appendChild(document.createTextNode("0.00"));
+  const panelEl59 = addPanelElement(panelEl56, "div", {"class": "aux-container", "style": "margin-top: 10px;"});
+  const panelEl60 = addPanelElement(panelEl59, "span", {});
+  panelEl60.appendChild(document.createTextNode("Position Size (Nominal):"));
+  const panelEl61 = addPanelElement(panelEl59, "span", {"class": "aux-val", "id": "nominal-display"});
+  panelEl61.appendChild(document.createTextNode("$0.00"));
+  const panelEl62 = addPanelElement(panelEl56, "div", {"class": "aux-container"});
+  const panelEl63 = addPanelElement(panelEl62, "span", {});
+  panelEl63.appendChild(document.createTextNode("Real Margin Used:"));
+  const panelEl64 = addPanelElement(panelEl62, "span", {"class": "aux-val", "id": "margin-display", "style": "font-weight: bold; color: #ffffff;"});
+  panelEl64.appendChild(document.createTextNode("$0.00"));
+  const panelEl65 = addPanelElement(panelEl56, "div", {"class": "aux-container"});
+  const panelEl66 = addPanelElement(panelEl65, "span", {});
+  panelEl66.appendChild(document.createTextNode("Max DD Loss Money:"));
+  const panelEl67 = addPanelElement(panelEl65, "span", {"class": "aux-val-danger", "id": "max-dd-money-display"});
+  panelEl67.appendChild(document.createTextNode("-$0.00"));
+  const panelEl68 = addPanelElement(panelEl56, "div", {"class": "aux-container"});
+  const panelEl69 = addPanelElement(panelEl68, "span", {});
+  panelEl69.appendChild(document.createTextNode("Stop Loss Money:"));
+  const panelEl70 = addPanelElement(panelEl68, "span", {"class": "aux-val-danger", "id": "sl-money-display"});
+  panelEl70.appendChild(document.createTextNode("-$0.00"));
+  const panelEl71 = addPanelElement(panelEl56, "button", {"class": "apply-btn", "id": "apply-btn"});
+  panelEl71.appendChild(document.createTextNode("Apply Position"));
+  const panelEl72 = addPanelElement(panelEl56, "div", {"class": "warning", "id": "warn-banner"});
+  panelEl72.appendChild(document.createTextNode("⚠️ EXCEEDS RISK LIMITS!"));
 
-      .expand-trigger-anchor {
-        position: fixed;
-        right: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 24px;
-        height: 60px;
-        background: #1c2030;
-        border: 1px solid #2a2e39;
-        border-right: none;
-        border-radius: 8px 0 0 8px;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        color: #2962ff;
-        cursor: pointer;
-        box-shadow: -4px 0 15px rgba(0,0,0,0.4);
-        z-index: 99999999;
-        transition: color 0.15s, background-color 0.15s;
-      }
-      .expand-trigger-anchor:hover { background: #131722; color: #00e676; }
-      .expand-trigger-anchor.visible { display: flex; }
-      .expand-trigger-anchor svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-
-      .price { font-size: 24px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 4px; }
-      
-      .direction-badge { 
-        display: none; 
-        font-size: 14px; 
-        font-weight: 800; 
-        text-align: center; 
-        margin-bottom: 14px; 
-        border-bottom: 1px solid #2a2e39; 
-        padding-bottom: 10px; 
-      }
-      .direction-badge.visible { display: block; }
-      .dir-long { color: #00e676; }
-      .dir-short { color: #ff5252; }
-
-      .grid { display: flex; gap: 12px; margin-bottom: 12px; }
-      .grid > div { flex: 1; }
-      label { display: block; font-size: 14px; color: #787b86; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; }
-      input { width: 100%; padding: 8px 10px; background: #131722; border: 1px solid #2a2e39; border-radius: 4px; color: #ffffff; box-sizing: border-box; font-size: 14px; }
-      input:focus { border-color: #2962ff; outline: none; }
-      .read-only-badge { font-size: 11px; background: #2962ff22; color: #2962ff; padding: 2px 5px; border-radius: 3px; float: right; margin-top: 2px; }
-      
-      .tracker-block { 
-        background: #131722; 
-        padding: 10px; 
-        border-radius: 6px; 
-        border: 1px solid #2a2e39; 
-        margin-bottom: 12px; 
-      }
-      .tracker-flex { 
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center; 
-        font-size: 14px; 
-      }
-      .loss-input-row { display: flex; gap: 8px; margin-top: 10px; margin-bottom: 10px; }
-      
-      .inline-add-icon-btn { 
-        background: transparent; 
-        border: 1px solid #2a2e39; 
-        color: #787b86; 
-        padding: 0 12px; 
-        border-radius: 4px; 
-        cursor: pointer; 
-        transition: color 0.15s, background-color 0.15s, border-color 0.15s; 
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .inline-add-icon-btn:hover { color: #ffffff; background-color: #2a2e39; border-color: #787b86; }
-      .inline-add-icon-btn svg { width: 14px; height: 14px; fill: currentColor; }
-
-      .action-icon-btn {
-        background: transparent;
-        border: none;
-        color: #787b86;
-        cursor: pointer;
-        padding: 4px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: color 0.15s, background-color 0.15s;
-      }
-      .action-icon-btn:hover { color: #ffffff; background-color: #2a2e39; }
-      .action-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }
-
-      .loss-log-list { 
-        max-height: 125px; 
-        overflow-y: auto; 
-        border-top: 1px solid #2a2e39; 
-        padding-top: 8px;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-      .loss-log-list::-webkit-scrollbar { width: 4px; }
-      .loss-log-list::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 2px; }
-      
-      .loss-log-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #1c2030;
-        padding: 6px 10px;
-        border-radius: 4px;
-        border: 1px solid #2a2e39;
-      }
-      .log-meta-stack { display: flex; flex-direction: column; gap: 2px; }
-      .log-primary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
-      .log-ticker-name { color: #b2b5be; }
-      .log-val-amount { color: #ff5252; font-weight: bold; }
-      .log-time-secondary { font-size: 11px; color: #5d606b; font-variant-numeric: tabular-nums; font-weight: normal; }
-      
-      .remove-log-btn {
-        background: transparent;
-        border: none;
-        padding: 4px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #787b86;
-        border-radius: 3px;
-        transition: color 0.15s, background 0.15s;
-      }
-      .remove-log-btn:hover { color: #ff5252; background: rgba(255, 82, 82, 0.15); }
-      .remove-log-btn svg { width: 12px; height: 12px; fill: currentColor; }
-
-      .output-area { background: #131722; padding: 14px; border-radius: 6px; border: 1px solid #2a2e39; margin-top: 16px; }
-      .output-lbl { font-size: 14px; color: #787b86; text-transform: uppercase; font-weight: bold; }
-      .output-val { font-size: 26px; font-weight: bold; color: #00e676; margin: 6px 0 2px 0; font-variant-numeric: tabular-nums; }
-      
-      .aux-container { font-size: 13px; color: #787b86; margin-bottom: 6px; display: flex; justify-content: space-between; }
-      .aux-val { color: #b2b5be; font-weight: 500; font-variant-numeric: tabular-nums; }
-      .aux-val-danger { color: #ff5252; font-weight: 700; font-variant-numeric: tabular-nums; }
-
-      .apply-btn { width: 100%; border: none; color: #ffffff; background: #2962ff; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.15s; margin-top: 8px; }
-      .apply-btn:hover { background: #1e4bd8; }
-      .apply-btn.success { background: #00e676; color: #131722; }
-      .apply-btn:disabled { background: #2a2e39; color: #787b86; cursor: not-allowed; }
-      
-      .warning { display: none; background: rgba(255, 82, 82, 0.15); border: 1px solid #ff5252; color: #ff5252; padding: 8px; border-radius: 4px; font-size: 14px; margin-top: 10px; font-weight: bold; text-align: center; }
-      .warning.active { display: block; }
-    </style>
-
-    <div class="expand-trigger-anchor" id="widget-expand-trigger" title="Expand AlphaSize Panel">
-      <svg viewBox="0 0 24 24">
-        <polyline points="15 18 9 12 15 6"></polyline>
-      </svg>
-    </div>
-
-    <div class="panel" id="main-widget-panel">
-      <div class="global-header-row">
-        <div class="header" id="drag-handle"></div>
-        <button class="window-icon-btn" id="widget-minimize-trigger" title="Minimize Window">
-          <svg viewBox="0 0 24 24">
-            <path d="M19 13H5v-2h14v2z"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="idol-quote-section">
-        <div class="idol-avatar-box">
-          <img src="" alt="Avatar">
-        </div>
-        <div class="idol-text-box">
-          <span class="idol-quote-content">"It never was my thinking that made the big money for me. It always was my sitting."</span>
-        </div>
-      </div>
-
-      <div class="price" id="tv-price">Connecting...</div>
-      <div class="direction-badge" id="tv-direction">Opening Long</div>
-
-      <div class="tracker-block">
-        <div class="tracker-flex">
-          <div>
-            <span style="color:#787b86; font-size: 14px; font-weight: bold; text-transform: uppercase; margin-right: 4px;">Daily Loss:</span>
-            <span id="loss-display" style="font-weight: bold; color: #ffffff;">$0.00</span>
-          </div>
-          <button class="action-icon-btn" id="clear-all-btn" title="Clear All Log Entries">
-            <svg viewBox="0 0 24 24">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="loss-input-row">
-          <input type="number" id="loss-adder" placeholder="Add loss ($)..." style="font-size: 14px; padding: 6px 8px;">
-          <button class="inline-add-icon-btn" id="add-loss-btn" title="Commit Log Entry">
-            <svg viewBox="0 0 24 24">
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-            </svg>
-          </button>
-        </div>
-        
-        <div class="loss-log-list" id="loss-log-list"></div>
-      </div>
-
-      <div class="grid">
-        <div>
-          <label>Equity ($)</label>
-          <input type="number" id="eq" value="">
-        </div>
-        <div>
-          <label>Leverage</label>
-          <input type="number" id="lev" value="">
-        </div>
-      </div>
-      
-      <div class="grid">
-        <div>
-          <label>Risk (%)</label>
-          <input type="number" id="rsk" step="0.1" value="">
-        </div>
-        <div>
-          <label>MAX DD (%)</label>
-          <input type="number" id="loss-cap" step="0.5" value="">
-        </div>
-      </div>
-
-      <div class="grid">
-        <div>
-          <label>Entry Price</label>
-          <input type="number" id="entry-price" step="0.00001" placeholder="Type Entry...">
-        </div>
-        <div>
-          <label>Stop Loss Price</label>
-          <input type="number" id="sl-price" step="0.00001" placeholder="Type SL...">
-        </div>
-      </div>
-
-      <div style="margin-bottom: 12px;">
-        <label>SL Distance <span class="read-only-badge">AUTO</span></label>
-        <input type="text" id="sl-distance" value="0.00%" disabled style="opacity: 0.7; cursor: not-allowed;">
-      </div>
-
-      <div class="output-area">
-        <div class="output-lbl">Amount (Tokens / Units)</div>
-        <div class="output-val" id="amount-display">0.00</div>
-        
-        <div class="aux-container" style="margin-top: 10px;">
-          <span>Position Size (Nominal):</span>
-          <span class="aux-val" id="nominal-display">$0.00</span>
-        </div>
-
-        <div class="aux-container">
-          <span>Real Margin Used:</span>
-          <span class="aux-val" id="margin-display" style="font-weight: bold; color: #ffffff;">$0.00</span>
-        </div>
-
-        <div class="aux-container">
-          <span>Max DD Loss Money:</span>
-          <span class="aux-val-danger" id="max-dd-money-display">-$0.00</span>
-        </div>
-
-        <div class="aux-container">
-          <span>Stop Loss Money:</span>
-          <span class="aux-val-danger" id="sl-money-display">-$0.00</span>
-        </div>
-
-        <button class="apply-btn" id="apply-btn">Apply Position</button>
-        <div class="warning" id="warn-banner">⚠️ EXCEEDS RISK LIMITS!</div>
-      </div>
-    </div>
-  `;
-
-  // Parse only bundled static markup. Never interpolate page or stored data into HTML.
-  const panelFragment = document.createRange().createContextualFragment(panelMarkup);
-  shadowRoot.appendChild(panelFragment);
   shadowRoot.getElementById('drag-handle').textContent = state.assetName;
   shadowRoot.querySelector('.idol-avatar-box img').src = extRuntime.getURL('livermore.jpg');
   shadowRoot.getElementById('eq').value = state.accountEquity;
