@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Systematic Trading",
+  "name": "Position Manager",
   "version": "1.0",
   "icons": {
     "16": "icons/icon-16.png",
@@ -10,7 +10,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "systematic-trading@local-dev"
+      "id": "position-manager@local-dev"
     }
   },
   "content_scripts": [
