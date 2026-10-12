@@ -10,7 +10,10 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "position-manager@local-dev"
+      "id": "position-manager@local-dev",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   },
   "content_scripts": [
