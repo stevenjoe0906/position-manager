@@ -1,5 +1,3 @@
-// content.js - AlphaSize Floating Panel (Manual Apply to #quantity-field)
-
 (function() {
   if (document.getElementById('alphasize-pure-root')) return;
 
@@ -76,7 +74,7 @@
 
   const extRuntime = (typeof browser !== 'undefined' && browser.runtime) ? browser.runtime : chrome.runtime;
 
-  shadowRoot.innerHTML = `
+  const panelMarkup = `
     <style>
       .panel {
         width: 340px;
@@ -328,7 +326,7 @@
 
     <div class="panel" id="main-widget-panel">
       <div class="global-header-row">
-        <div class="header" id="drag-handle">${state.assetName}</div>
+        <div class="header" id="drag-handle"></div>
         <button class="window-icon-btn" id="widget-minimize-trigger" title="Minimize Window">
           <svg viewBox="0 0 24 24">
             <path d="M19 13H5v-2h14v2z"/>
@@ -338,7 +336,7 @@
 
       <div class="idol-quote-section">
         <div class="idol-avatar-box">
-          <img src="${extRuntime && extRuntime.getURL ? extRuntime.getURL('livermore.jpg') : 'https://i.imgur.com/vOnX60V.png'}" alt="Avatar">
+          <img src="" alt="Avatar">
         </div>
         <div class="idol-text-box">
           <span class="idol-quote-content">"It never was my thinking that made the big money for me. It always was my sitting."</span>
@@ -375,22 +373,22 @@
       <div class="grid">
         <div>
           <label>Equity ($)</label>
-          <input type="number" id="eq" value="${state.accountEquity}">
+          <input type="number" id="eq" value="">
         </div>
         <div>
           <label>Leverage</label>
-          <input type="number" id="lev" value="${state.leverage}">
+          <input type="number" id="lev" value="">
         </div>
       </div>
       
       <div class="grid">
         <div>
           <label>Risk (%)</label>
-          <input type="number" id="rsk" step="0.1" value="${state.riskPercent}">
+          <input type="number" id="rsk" step="0.1" value="">
         </div>
         <div>
           <label>MAX DD (%)</label>
-          <input type="number" id="loss-cap" step="0.5" value="${state.dailyLossLimitPercent}">
+          <input type="number" id="loss-cap" step="0.5" value="">
         </div>
       </div>
 
@@ -439,6 +437,16 @@
       </div>
     </div>
   `;
+
+  // Parse only bundled static markup. Never interpolate page or stored data into HTML.
+  const panelFragment = document.createRange().createContextualFragment(panelMarkup);
+  shadowRoot.appendChild(panelFragment);
+  shadowRoot.getElementById('drag-handle').textContent = state.assetName;
+  shadowRoot.querySelector('.idol-avatar-box img').src = extRuntime.getURL('livermore.jpg');
+  shadowRoot.getElementById('eq').value = state.accountEquity;
+  shadowRoot.getElementById('lev').value = state.leverage;
+  shadowRoot.getElementById('rsk').value = state.riskPercent;
+  shadowRoot.getElementById('loss-cap').value = state.dailyLossLimitPercent;
 
   // UI Element Cache
   const panelMain = shadowRoot.getElementById('main-widget-panel');
@@ -514,7 +522,7 @@
     elLossDisplay.textContent = `$${state.currentDailyLossUSD.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
     elLossDisplay.style.color = state.currentDailyLossUSD > 0 ? '#ff5252' : '#ffffff';
 
-    containerLogList.innerHTML = '';
+    containerLogList.replaceChildren();
     if (state.lossRecords.length === 0) {
       containerLogList.style.display = 'none';
       return;
@@ -525,22 +533,34 @@
       const itemRow = document.createElement('div');
       itemRow.className = 'loss-log-item';
       
-      itemRow.innerHTML = `
-        <div class="log-meta-stack">
-          <div class="log-primary-row">
-            <span class="log-ticker-name">${record.asset || 'UNKNOWN'}</span>
-            <span class="log-val-amount">-$${record.val.toFixed(2)}</span>
-          </div>
-          <span class="log-time-secondary">${record.time}</span>
-        </div>
-        <button class="remove-log-btn" data-id="${record.id}">
-          <svg viewBox="0 0 24 24">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-          </svg>
-        </button>
-      `;
+      const metaStack = document.createElement('div');
+      metaStack.className = 'log-meta-stack';
+      const primaryRow = document.createElement('div');
+      primaryRow.className = 'log-primary-row';
+      const assetName = document.createElement('span');
+      assetName.className = 'log-ticker-name';
+      assetName.textContent = record.asset || 'UNKNOWN';
+      const amount = document.createElement('span');
+      amount.className = 'log-val-amount';
+      amount.textContent = `-$${record.val.toFixed(2)}`;
+      primaryRow.append(assetName, amount);
+      const time = document.createElement('span');
+      time.className = 'log-time-secondary';
+      time.textContent = record.time;
+      metaStack.append(primaryRow, time);
 
-      const btnRemove = itemRow.querySelector('.remove-log-btn');
+      const btnRemove = document.createElement('button');
+      btnRemove.className = 'remove-log-btn';
+      btnRemove.dataset.id = String(record.id);
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      const path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('d', 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z');
+      svg.appendChild(path);
+      btnRemove.appendChild(svg);
+      itemRow.append(metaStack, btnRemove);
+
       btnRemove.addEventListener('click', (e) => {
         e.stopPropagation();
         removeSingleLossItem(record.id);
