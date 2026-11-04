@@ -5,9 +5,9 @@ const fs = require('node:fs');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../content.js'), 'utf8');
 function setup() {
   const context = vm.createContext({
-    state: { useATR: true, atrPending: true, entryPrice: 1000, direction: 'LONG', atrMultiplier: 1, atrValue: 10 },
+    state: { useATR: true, atrPending: true, entryPrice: 1000, direction: 'LONG', ticketDirection: 'LONG', atrMultiplier: 1, atrValue: 10 },
     shadowRoot: { activeElement: null }, inputSLPrice: { value: '' },
-    document: { querySelectorAll: () => [] }
+    document: { querySelectorAll: () => [] }, queueTicketStop: () => {}
   });
   vm.runInContext(source.slice(source.indexOf('  function readChartATR()'), source.indexOf('  function updateATRControls()')), context);
   vm.runInContext(source.slice(source.indexOf('  function applyATRStop()'), source.indexOf('  function requestATRStop()')), context);
@@ -15,7 +15,7 @@ function setup() {
 }
 test('all multipliers and both directions', () => {
   for (const direction of ['LONG', 'SHORT']) for (const multiplier of [1, 1.5, 2]) {
-    const c = setup(); c.state.direction = direction; c.state.atrMultiplier = multiplier;
+    const c = setup(); c.state.direction = direction; c.state.ticketDirection = direction; c.state.atrMultiplier = multiplier;
     c.applyATRStop();
     assert.equal(c.state.stopLossPrice, 1000 + (direction === 'LONG' ? -1 : 1) * multiplier * 10);
   }
@@ -76,4 +76,69 @@ test('deduplicates the same plot found through both markup paths', () => {
   const item = {getClientRects: () => [1], querySelectorAll: () => [plot], querySelector: () => ({textContent: 'ATR'})};
   c.document.querySelectorAll = selector => selector === '.chart-container' ? [] : [item];
   assert.equal(c.readChartATR(), 125.1);
+});
+
+function ticketSetup() {
+  const nodes = {};
+  const c = vm.createContext({
+    state: {useATR: true, atrPending: true}, inputUseATR: {checked: true},
+    inputSLPrice: {value: ''}, updateATRControls() {}, calculateRiskSystem() {},
+    cleanAndParseFloat: value => Number(value) || 0,
+    console, nodes,
+    document: {
+      querySelector: selector => nodes[selector] || null,
+      querySelectorAll: selector => nodes[selector] || [],
+      addEventListener: (type, callback) => { c.onInput = callback; }
+    },
+    setNativeInputValue: (input, value) => { input.value = value; c.onInput({target: input}); }
+  });
+  vm.runInContext(source.slice(source.indexOf('  const ticketStopSelector ='), source.indexOf('  // Read only a named ATR')), c);
+  return c;
+}
+test('direction uses active Buy/Sell classes and rejects missing/ambiguous side', () => {
+  const c = ticketSetup();
+  const buy = {getClientRects: () => [1], classList: ['buy-kndSwmgU', 'active-kndSwmgU']};
+  const sell = {getClientRects: () => [1], classList: ['sell-kndSwmgU']};
+  c.nodes['[data-name="side-control-buy"]'] = [buy];
+  c.nodes['[data-name="side-control-sell"]'] = [sell];
+  assert.equal(c.readTicketDirection(), 'LONG');
+  buy.classList = ['buy-kndSwmgU']; sell.classList.push('active-kndSwmgU');
+  assert.equal(c.readTicketDirection(), 'SHORT');
+  buy.classList.push('active-other'); assert.equal(c.readTicketDirection(), null);
+});
+test('leverage reads the supplied button markup', () => {
+  const c = ticketSetup();
+  const button = {getClientRects: () => [1], textContent: '10x'};
+  c.nodes['[data-qa-id="leverage-button"]'] = [button];
+  assert.equal(c.readTicketLeverage(), 10);
+  button.textContent = '2.5×'; assert.equal(c.readTicketLeverage(), 2.5);
+  button.textContent = 'Leverage'; assert.equal(c.readTicketLeverage(), null);
+});
+test('enables stop switch and writes price without disabling ATR', () => {
+  const c = ticketSetup(); let clicks = 0;
+  const toggle = {checked: false, click() { this.checked = true; clicks++; }};
+  const input = {value: '', matches: () => true};
+  c.nodes['input[data-qa-id="order-ticket-stop-loss-checkbox-bracket"]'] = toggle;
+  c.nodes['input[data-qa-id~="order-ticket-stop-loss-input"]'] = input;
+  c.queueTicketStop(990); assert.equal(input.value, '990'); assert.equal(clicks, 1);
+  assert.equal(c.state.useATR, true);
+  c.queueTicketStop(980); assert.equal(input.value, '980'); assert.equal(clicks, 1);
+});
+test('delayed input mount is retried and manual page edit cancels pending write', () => {
+  const c = ticketSetup();
+  c.queueTicketStop(990);
+  const input = {value: '', matches: () => true};
+  c.nodes['input[data-qa-id~="order-ticket-stop-loss-input"]'] = input;
+  c.flushTicketStop(); assert.equal(input.value, '990');
+  delete c.nodes['input[data-qa-id~="order-ticket-stop-loss-input"]'];
+  c.queueTicketStop(980);
+  input.value = '975'; c.onInput({target: input});
+  assert.equal(c.state.useATR, false); assert.equal(c.inputUseATR.checked, false);
+  assert.equal(c.inputSLPrice.value, 975);
+  c.nodes['input[data-qa-id~="order-ticket-stop-loss-input"]'] = input;
+  c.flushTicketStop(); assert.equal(input.value, '975');
+});
+test('unknown ticket direction never calculates an ATR stop', () => {
+  const c = setup(); c.state.ticketDirection = null;
+  c.applyATRStop(); assert.equal(c.inputSLPrice.value, '');
 });
