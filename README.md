@@ -77,17 +77,18 @@ The extension does not submit an order. Review every value in TradingView before
 
 ## ATR stop loss
 
-Add one ATR indicator to the active TradingView chart and keep its legend value visible. Enable **Use ATR for stop loss price**, choose **Long** or **Short**, and select **1× ATR**, **1.5× ATR**, or **2× ATR**. The default multiplier is 1×; ATR mode is initially off.
+Add one ATR indicator to the active TradingView chart and keep its legend value visible. Enable **Use ATR for stop loss price**, then select **1x**, **1.5x**, or **2x** (default: 1x). The current ATR appears above the buttons.
 
-- Long: entry − multiplier × ATR.
-- Short: entry + multiplier × ATR.
-- Changing the entry (in the panel or the detected order-ticket field), direction, or multiplier recalculates the stop.
-- You can edit the stop manually at any time. Polling and live ATR changes leave your stop untouched until the next entry/direction/multiplier change. Clicking the selected multiplier reapplies the displayed ATR.
-- While ATR mode is enabled, the order ticket's stop field does not overwrite the panel's stop. Turning ATR mode off restores the existing order-ticket synchronization.
-- Missing or ambiguous ATR data shows an unavailable message. A requested calculation clears the old stop while waiting for a readable ATR; manually entering a stop cancels that pending calculation.
-- This reads the **displayed legend value**, which may correspond to a historical candle under the crosshair. Move the pointer off historical candles before applying ATR.
-- DOM extraction is best-effort and requires live verification against your TradingView layout. Multiple charts require a detectable active chart; multiple ATR studies are not supported.
-- Only position quantity is copied by **Apply Position**. Copy your chosen stop to TradingView separately; the extension does not submit orders.
+- Direction comes from the active Buy/Sell control in TradingView's order ticket. Buy subtracts ATR distance from entry; Sell adds it. No calculation is made when direction cannot be detected.
+- Choosing an ATR option fills the order ticket's stop-loss price and enables its stop-loss switch if needed. Changing entry or the page's Buy/Sell direction also recalculates and fills the stop while ATR mode is enabled.
+- Live ATR changes update the displayed ATR without moving the stop. Click the selected multiplier again to apply the latest displayed value.
+- Editing the stop manually in either the panel or the order ticket unchecks ATR mode. Panel edits are copied to the ticket; ticket edits update the panel and position sizing.
+- SL Distance shows both percentage and absolute price distance.
+- Leverage is read automatically from the order ticket's leverage button when available; manual entry remains available when detection fails.
+- The reader uses the displayed legend value, which can follow the crosshair over historical candles. Move the pointer off historical candles before applying ATR.
+- Missing or ambiguous ATR data clears a requested calculation while waiting for a valid value. Multiple charts require a detectable active chart, and multiple ATR studies are unsupported.
+- Stop-loss writing expects the ticket field to be in absolute-price mode, as shown by its price value. Review the ticket's field mode and resulting value.
+- **Apply Position** copies position quantity. ATR controls fill the stop-loss field, but the extension never submits an order.
 
 ## Daily-loss tracking
 
