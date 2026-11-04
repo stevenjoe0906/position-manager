@@ -219,6 +219,9 @@
   panelEl69.appendChild(document.createTextNode("Stop Loss Money:"));
   const panelEl70 = addPanelElement(panelEl68, "span", {"class": "aux-val-danger", "id": "sl-money-display"});
   panelEl70.appendChild(document.createTextNode("-$0.00"));
+  const feeRow = addPanelElement(panelEl56, 'div', { class: 'aux-container', title: 'Estimated fee for one side of the trade, based on nominal position size.' });
+  addPanelElement(feeRow, 'span', {}, 'Estimated Fee:');
+  const elEstimatedFee = addPanelElement(feeRow, 'span', { class: 'aux-val', id: 'estimated-fee-display' }, 'M: $0.00 · T: $0.00');
   const distanceRow = addPanelElement(panelEl56, 'div', { class: 'aux-container' });
   addPanelElement(distanceRow, 'span', {}, 'Stop Loss Distance:');
   addPanelElement(distanceRow, 'span', { class: 'aux-val', id: 'sl-distance' }, '0.00% · 0');
@@ -446,6 +449,11 @@
       minimumFractionDigits: 2, 
       maximumFractionDigits: 2 
     })}`;
+
+    // Per-side estimate using the requested fixed maker/taker rates.
+    const feeNotional = Number.isFinite(nominalSize) && nominalSize > 0 ? nominalSize : 0;
+    const formatFee = fee => fee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    elEstimatedFee.textContent = `M: ${formatFee(feeNotional * 0.0002)} · T: ${formatFee(feeNotional * 0.0005)}`;
 
     const realLeverage = state.accountEquity > 0 ? nominalSize / state.accountEquity : 0;
     elRealLeverage.textContent = Number.isFinite(realLeverage) ? `${realLeverage.toFixed(2)}x` : '0.00x';
