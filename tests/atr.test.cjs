@@ -84,11 +84,11 @@ function ticketSetup() {
     state: {useATR: true, atrPending: true}, inputUseATR: {checked: true},
     inputSLPrice: {value: ''}, updateATRControls() {}, calculateRiskSystem() {},
     cleanAndParseFloat: value => Number(value) || 0,
-    console, nodes,
+    console, nodes, listeners: {},
     document: {
       querySelector: selector => nodes[selector] || null,
       querySelectorAll: selector => nodes[selector] || [],
-      addEventListener: (type, callback) => { c.onInput = callback; }
+      addEventListener: (type, callback, capture) => { c.listeners[type] = {callback, capture}; c.onInput = callback; }
     },
     setNativeInputValue: (input, value) => { input.value = value; c.onInput({target: input}); }
   });
@@ -141,4 +141,45 @@ test('delayed input mount is retried and manual page edit cancels pending write'
 test('unknown ticket direction never calculates an ATR stop', () => {
   const c = setup(); c.state.ticketDirection = null;
   c.applyATRStop(); assert.equal(c.inputSLPrice.value, '');
+});
+
+test('ticket listeners capture both input and change before page handlers', () => {
+  const c = ticketSetup();
+  assert.equal(c.listeners.input.capture, true);
+  assert.equal(c.listeners.change.capture, true);
+  const input = {value: '950', matches: () => true};
+  c.listeners.change.callback({target: input});
+  assert.equal(c.inputSLPrice.value, 950);
+  assert.equal(c.inputUseATR.checked, false);
+});
+test('silent page stop changes and clearing stop disable ATR via polling', () => {
+  const c = ticketSetup();
+  const input = {value: '990', matches: () => true};
+  c.nodes['input[data-qa-id~="order-ticket-stop-loss-input"]'] = input;
+  c.observeTicketStop(); assert.equal(c.state.useATR, true);
+  input.value = '960'; c.observeTicketStop();
+  assert.equal(c.state.useATR, false); assert.equal(c.inputSLPrice.value, 960);
+  input.value = ''; c.observeTicketStop(); assert.equal(c.inputSLPrice.value, '');
+});
+test('polling ignores extension writes and detects edits after input remount', () => {
+  const c = ticketSetup();
+  const input = {value: '900', matches: () => true};
+  c.nodes['input[data-qa-id~="order-ticket-stop-loss-input"]'] = input;
+  c.observeTicketStop(); c.queueTicketStop(990); c.observeTicketStop();
+  assert.equal(c.state.useATR, true);
+  c.nodes['input[data-qa-id~="order-ticket-stop-loss-input"]'] = {value: '970'};
+  c.observeTicketStop(); assert.equal(c.state.useATR, false); assert.equal(c.inputSLPrice.value, 970);
+});
+test('Apply button follows ticket direction and restores direction label after success', () => {
+  const classes = new Set();
+  const c = vm.createContext({state: {ticketDirection: 'LONG'}, btnApply: {
+    textContent: '', classList: {toggle: (name, enabled) => enabled ? classes.add(name) : classes.delete(name), contains: name => classes.has(name)}
+  }});
+  vm.runInContext(source.slice(source.indexOf('  function updateApplyButton()'), source.indexOf('  function calculateRiskSystem()')), c);
+  c.updateApplyButton(); assert.equal(c.btnApply.textContent, 'Apply Long Position'); assert.ok(classes.has('long'));
+  c.state.ticketDirection = 'SHORT'; c.updateApplyButton();
+  assert.equal(c.btnApply.textContent, 'Apply Short Position'); assert.ok(classes.has('short')); assert.ok(!classes.has('long'));
+  classes.add('success'); c.btnApply.textContent = 'Position Applied! ✓'; c.updateApplyButton();
+  assert.equal(c.btnApply.textContent, 'Position Applied! ✓');
+  classes.delete('success'); c.updateApplyButton(); assert.equal(c.btnApply.textContent, 'Apply Short Position');
 });
