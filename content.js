@@ -32,6 +32,10 @@
     stopLossPercent: 0,     
     currentPrice: 0,        
     direction: 'LONG',
+    useATR: false,
+    atrMultiplier: 1,
+    atrValue: null,
+    atrPending: false,
     dailyLossLimitPercent: 3, 
     currentDailyLossUSD: 0,
     lossRecords: [] 
@@ -78,6 +82,15 @@
   // This also avoids createContextualFragment and innerHTML validator warnings.
   const panelStyle = document.createElement('style');
   panelStyle.textContent = "\n      .panel {\n        width: 340px;\n        background: #1c2030;\n        border: 1px solid #2a2e39;\n        border-radius: 8px;\n        padding: 16px;\n        color: #d1d4dc;\n        box-shadow: 0 10px 25px rgba(0,0,0,0.5);\n        display: block;\n      }\n      .panel.hidden { display: none; }\n\n      .global-header-row {\n        position: relative;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        width: 100%;\n        margin-bottom: 14px;\n        padding: 4px 0;\n      }\n      .header { \n        font-size: 14px; \n        font-weight: 800; \n        color: #2962ff; \n        letter-spacing: 1.5px; \n        text-transform: uppercase; \n        cursor: move; \n        text-align: center;\n        width: 100%;\n        padding: 0 32px;\n      }\n      \n      .window-icon-btn {\n        position: absolute;\n        right: 0;\n        top: 50%;\n        transform: translateY(-50%);\n        background: transparent;\n        border: none;\n        color: #787b86;\n        cursor: pointer;\n        padding: 6px;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: color 0.15s, transform 0.15s;\n        border-radius: 4px;\n      }\n      .window-icon-btn:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.05); }\n      .window-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }\n\n      .idol-quote-section {\n        display: flex;\n        align-items: center;\n        gap: 14px;\n        background: #131722;\n        border: 1px solid #2a2e39;\n        border-radius: 6px;\n        padding: 12px 14px;\n        margin-bottom: 14px;\n      }\n      .idol-avatar-box {\n        width: 48px;\n        height: 48px;\n        border-radius: 50%;\n        border: 2px solid #2a2e39;\n        overflow: hidden;\n        flex-shrink: 0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        background: #1c2030;\n      }\n      .idol-avatar-box img {\n        width: 100%;\n        height: 100%;\n        object-fit: cover;\n      }\n      .idol-text-box {\n        flex: 1;\n        display: flex;\n        align-items: center;\n      }\n      .idol-quote-content {\n        font-size: 14px;\n        line-height: 18px;\n        color: #e0e3eb;\n        font-style: italic;\n        font-weight: 600;\n      }\n\n      .expand-trigger-anchor {\n        position: fixed;\n        right: 0;\n        top: 50%;\n        transform: translateY(-50%);\n        width: 24px;\n        height: 60px;\n        background: #1c2030;\n        border: 1px solid #2a2e39;\n        border-right: none;\n        border-radius: 8px 0 0 8px;\n        display: none;\n        align-items: center;\n        justify-content: center;\n        color: #2962ff;\n        cursor: pointer;\n        box-shadow: -4px 0 15px rgba(0,0,0,0.4);\n        z-index: 99999999;\n        transition: color 0.15s, background-color 0.15s;\n      }\n      .expand-trigger-anchor:hover { background: #131722; color: #00e676; }\n      .expand-trigger-anchor.visible { display: flex; }\n      .expand-trigger-anchor svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }\n\n      .price { font-size: 24px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 4px; }\n      \n      .direction-badge { \n        display: none; \n        font-size: 14px; \n        font-weight: 800; \n        text-align: center; \n        margin-bottom: 14px; \n        border-bottom: 1px solid #2a2e39; \n        padding-bottom: 10px; \n      }\n      .direction-badge.visible { display: block; }\n      .dir-long { color: #00e676; }\n      .dir-short { color: #ff5252; }\n\n      .grid { display: flex; gap: 12px; margin-bottom: 12px; }\n      .grid > div { flex: 1; }\n      label { display: block; font-size: 14px; color: #787b86; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; }\n      input { width: 100%; padding: 8px 10px; background: #131722; border: 1px solid #2a2e39; border-radius: 4px; color: #ffffff; box-sizing: border-box; font-size: 14px; }\n      input:focus { border-color: #2962ff; outline: none; }\n      .read-only-badge { font-size: 11px; background: #2962ff22; color: #2962ff; padding: 2px 5px; border-radius: 3px; float: right; margin-top: 2px; }\n      \n      .tracker-block { \n        background: #131722; \n        padding: 10px; \n        border-radius: 6px; \n        border: 1px solid #2a2e39; \n        margin-bottom: 12px; \n      }\n      .tracker-flex { \n        display: flex; \n        justify-content: space-between; \n        align-items: center; \n        font-size: 14px; \n      }\n      .loss-input-row { display: flex; gap: 8px; margin-top: 10px; margin-bottom: 10px; }\n      \n      .inline-add-icon-btn { \n        background: transparent; \n        border: 1px solid #2a2e39; \n        color: #787b86; \n        padding: 0 12px; \n        border-radius: 4px; \n        cursor: pointer; \n        transition: color 0.15s, background-color 0.15s, border-color 0.15s; \n        display: flex;\n        align-items: center;\n        justify-content: center;\n      }\n      .inline-add-icon-btn:hover { color: #ffffff; background-color: #2a2e39; border-color: #787b86; }\n      .inline-add-icon-btn svg { width: 14px; height: 14px; fill: currentColor; }\n\n      .action-icon-btn {\n        background: transparent;\n        border: none;\n        color: #787b86;\n        cursor: pointer;\n        padding: 4px;\n        border-radius: 4px;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: color 0.15s, background-color 0.15s;\n      }\n      .action-icon-btn:hover { color: #ffffff; background-color: #2a2e39; }\n      .action-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }\n\n      .loss-log-list { \n        max-height: 125px; \n        overflow-y: auto; \n        border-top: 1px solid #2a2e39; \n        padding-top: 8px;\n        display: flex;\n        flex-direction: column;\n        gap: 6px;\n      }\n      .loss-log-list::-webkit-scrollbar { width: 4px; }\n      .loss-log-list::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 2px; }\n      \n      .loss-log-item {\n        display: flex;\n        justify-content: space-between;\n        align-items: center;\n        background: #1c2030;\n        padding: 6px 10px;\n        border-radius: 4px;\n        border: 1px solid #2a2e39;\n      }\n      .log-meta-stack { display: flex; flex-direction: column; gap: 2px; }\n      .log-primary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }\n      .log-ticker-name { color: #b2b5be; }\n      .log-val-amount { color: #ff5252; font-weight: bold; }\n      .log-time-secondary { font-size: 11px; color: #5d606b; font-variant-numeric: tabular-nums; font-weight: normal; }\n      \n      .remove-log-btn {\n        background: transparent;\n        border: none;\n        padding: 4px;\n        cursor: pointer;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        color: #787b86;\n        border-radius: 3px;\n        transition: color 0.15s, background 0.15s;\n      }\n      .remove-log-btn:hover { color: #ff5252; background: rgba(255, 82, 82, 0.15); }\n      .remove-log-btn svg { width: 12px; height: 12px; fill: currentColor; }\n\n      .output-area { background: #131722; padding: 14px; border-radius: 6px; border: 1px solid #2a2e39; margin-top: 16px; }\n      .output-lbl { font-size: 14px; color: #787b86; text-transform: uppercase; font-weight: bold; }\n      .output-val { font-size: 26px; font-weight: bold; color: #00e676; margin: 6px 0 2px 0; font-variant-numeric: tabular-nums; }\n      \n      .aux-container { font-size: 13px; color: #787b86; margin-bottom: 6px; display: flex; justify-content: space-between; }\n      .aux-val { color: #b2b5be; font-weight: 500; font-variant-numeric: tabular-nums; }\n      .aux-val-danger { color: #ff5252; font-weight: 700; font-variant-numeric: tabular-nums; }\n\n      .apply-btn { width: 100%; border: none; color: #ffffff; background: #2962ff; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.15s; margin-top: 8px; }\n      .apply-btn:hover { background: #1e4bd8; }\n      .apply-btn.success { background: #00e676; color: #131722; }\n      .apply-btn:disabled { background: #2a2e39; color: #787b86; cursor: not-allowed; }\n      \n      .warning { display: none; background: rgba(255, 82, 82, 0.15); border: 1px solid #ff5252; color: #ff5252; padding: 8px; border-radius: 4px; font-size: 14px; margin-top: 10px; font-weight: bold; text-align: center; }\n      .warning.active { display: block; }\n    ";
+  panelStyle.textContent += `
+    .panel { max-height: calc(100vh - 110px); overflow-y: auto; }
+    .atr-toggle { text-transform: none; display: flex; align-items: center; gap: 8px; }
+    .atr-toggle input { width: auto; }
+    .atr-options { display: flex; gap: 6px; margin: 8px 0; }
+    .atr-options button { flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
+    .atr-options button[aria-pressed="true"] { border-color: #2962ff; background: #2962ff33; color: #fff; }
+    .atr-status { font-size: 12px; color: #b2b5be; line-height: 1.4; }
+  `;
   shadowRoot.appendChild(panelStyle);
 
   const svgNS = 'http://www.w3.org/2000/svg';
@@ -155,6 +168,31 @@
   const panelEl50 = addPanelElement(panelEl49, "label", {});
   panelEl50.appendChild(document.createTextNode("Stop Loss Price"));
   const panelEl51 = addPanelElement(panelEl49, "input", {"type": "number", "id": "sl-price", "step": "0.00001", "placeholder": "Type SL..."});
+  const atrBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
+  const atrLabel = addPanelElement(atrBlock, 'label', { class: 'atr-toggle' });
+  const inputUseATR = addPanelElement(atrLabel, 'input', { type: 'checkbox', id: 'use-atr' });
+  addPanelElement(atrLabel, 'span', {}, 'Use ATR for stop loss price');
+  const atrControls = addPanelElement(atrBlock, 'div', { hidden: '' });
+  const atrSides = addPanelElement(atrControls, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR stop direction' });
+  const atrSideButtons = ['LONG', 'SHORT'].map(side => {
+    const button = addPanelElement(atrSides, 'button', { type: 'button', 'aria-pressed': String(side === state.direction) }, side === 'LONG' ? 'Long' : 'Short');
+    button.addEventListener('click', () => {
+      state.direction = side;
+      requestATRStop();
+    });
+    return button;
+  });
+  const atrMultipliers = addPanelElement(atrControls, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR multiplier' });
+  const atrMultiplierButtons = [1, 1.5, 2].map(multiplier => {
+    const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': String(multiplier === 1) }, `${multiplier}× ATR`);
+    button.addEventListener('click', () => {
+      state.atrMultiplier = multiplier;
+      requestATRStop();
+    });
+    return button;
+  });
+  const atrStatus = addPanelElement(atrControls, 'div', { class: 'atr-status', role: 'status' });
+  addPanelElement(atrControls, 'div', { class: 'atr-status' }, 'Manual edits stay until entry, direction, or multiplier changes.');
   const panelEl52 = addPanelElement(panelEl4, "div", {"style": "margin-bottom: 12px;"});
   const panelEl53 = addPanelElement(panelEl52, "label", {});
   panelEl53.appendChild(document.createTextNode("SL Distance "));
@@ -486,12 +524,15 @@
   
   inputEntryPrice.addEventListener('input', (e) => {
     state.entryPrice = Number(e.target.value);
+    if (state.useATR) requestATRStop();
     calculateRiskSystem();
   });
 
   inputSLPrice.addEventListener('input', (e) => {
     state.stopLossPrice = Number(e.target.value);
+    state.atrPending = false;
     calculateRiskSystem();
+    updateATRControls();
   });
 
   // Explicit Manual Injection Event Listener
@@ -518,6 +559,68 @@
     if (!text) return 0;
     return parseFloat(text.replace(/[^0-9.-]/g, '')) || 0;
   }
+
+  // Read only a named ATR study's value, never its length/settings or another indicator.
+  // TradingView's legend follows the crosshair, so this is the displayed value.
+  function readChartATR() {
+    const charts = Array.from(document.querySelectorAll('.chart-container'));
+    const active = charts.filter(chart => chart.classList.contains('active'));
+    if (charts.length > 1 && active.length !== 1) return null;
+    const scope = active[0] || charts[0] || document;
+    const rows = scope.querySelectorAll('[data-name="legend-source-item"]');
+    const values = [];
+    for (const row of rows) {
+      if (!row.getClientRects().length) continue;
+      const title = row.querySelector('[data-name="legend-source-title"]');
+      if (!title || !/^(ATR|Average True Range)(?:$|\s|\()/i.test(title.textContent.trim())) continue;
+      const plots = row.querySelectorAll('[data-name="legend-source-value"], [class*="valueValue-"]');
+      if (plots.length !== 1) continue;
+      const text = plots[0].textContent.trim().replace(/[\u200e\u200f\u2212]/g, c => c === '\u2212' ? '-' : '').replace(/,/g, '');
+      if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(text)) continue;
+      const value = Number(text);
+      if (Number.isFinite(value) && value > 0) values.push(value);
+    }
+    return values.length === 1 ? values[0] : null;
+  }
+
+  function updateATRControls() {
+    atrControls.hidden = !state.useATR;
+    atrSideButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.direction === ['LONG', 'SHORT'][index])));
+    atrMultiplierButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.atrMultiplier === [1, 1.5, 2][index])));
+    atrStatus.textContent = state.atrValue === null
+      ? 'ATR unavailable. Show one ATR indicator with its value on the active chart, or enter a stop manually.'
+      : `Displayed ATR: ${state.atrValue} · Distance: ${Number((state.atrValue * state.atrMultiplier).toPrecision(12))}`;
+  }
+
+  function applyATRStop() {
+    if (!state.useATR || !state.atrPending || state.atrValue === null) return;
+    if (shadowRoot.activeElement === inputSLPrice) return;
+    const stop = state.entryPrice + (state.direction === 'SHORT' ? 1 : -1) * state.atrMultiplier * state.atrValue;
+    state.stopLossPrice = state.entryPrice > 0 && Number.isFinite(stop) && stop > 0
+      ? Number(stop.toPrecision(12)) : 0;
+    // Reject a distance lost to floating-point rounding.
+    if (state.stopLossPrice === state.entryPrice) state.stopLossPrice = 0;
+    inputSLPrice.value = state.stopLossPrice || '';
+    state.atrPending = false;
+  }
+
+  function requestATRStop() {
+    state.atrValue = readChartATR();
+    state.atrPending = true;
+    // Do not keep sizing from a previous entry's stop while waiting for ATR.
+    state.stopLossPrice = 0;
+    inputSLPrice.value = '';
+    applyATRStop();
+    updateATRControls();
+    calculateRiskSystem();
+  }
+
+  inputUseATR.addEventListener('change', () => {
+    state.useATR = inputUseATR.checked;
+    state.atrPending = false;
+    if (state.useATR) requestATRStop();
+    updateATRControls();
+  });
 
   // --- Scraper Interval Engine ---
   setInterval(() => {
@@ -638,16 +741,24 @@
     }
 
     if (autoEntryPrice > 0 && shadowRoot.activeElement !== inputEntryPrice) {
+      const entryChanged = state.entryPrice !== autoEntryPrice;
       state.entryPrice = autoEntryPrice;
       inputEntryPrice.value = autoEntryPrice;
+      if (state.useATR && entryChanged) requestATRStop();
     }
 
-    if (autoSLPrice > 0 && shadowRoot.activeElement !== inputSLPrice) {
+    if (!state.useATR && autoSLPrice > 0 && shadowRoot.activeElement !== inputSLPrice) {
       state.stopLossPrice = autoSLPrice;
       inputSLPrice.value = autoSLPrice;
     }
 
+    if (state.useATR) {
+      state.atrValue = readChartATR();
+      applyATRStop();
+      updateATRControls();
+    }
     calculateRiskSystem();
   }, 500);
 
 })();
+
