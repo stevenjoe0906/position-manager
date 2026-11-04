@@ -34,11 +34,11 @@ test('invalid and nonpositive stops clear the output', () => {
   for (const entry of [0, -1, Infinity, 5]) { const c = setup(); c.state.entryPrice = entry; c.applyATRStop(); assert.equal(c.inputSLPrice.value, ''); }
 });
 function row(title, value, visible = true) {
-  return { getClientRects: () => visible ? [1] : [], querySelector: () => ({textContent: title}), querySelectorAll: () => [{textContent: value}] };
+  return { getClientRects: () => visible ? [1] : [], querySelector: () => ({textContent: title}), querySelectorAll: () => [{textContent: value, getClientRects: () => visible ? [1] : []}] };
 }
 test('reads named ATR plot only, rejects missing/ambiguous/invalid values', () => {
   const c = setup(); let rows = [row('RSI', '50'), row('ATR', '143.2')];
-  c.document.querySelectorAll = selector => selector === '.chart-container' ? [] : rows;
+  c.document.querySelectorAll = selector => selector === '[data-name="legend-source-item"]' ? rows : [];
   assert.equal(c.readChartATR(), 143.2);
   for (const value of ['—', '0', '-1', 'NaN', '14 RMA', '12K']) { rows = [row('ATR', value)]; assert.equal(c.readChartATR(), null); }
   rows = [row('ATR (14)', '1,234.5')]; assert.equal(c.readChartATR(), 1234.5);
@@ -47,8 +47,33 @@ test('reads named ATR plot only, rejects missing/ambiguous/invalid values', () =
 });
 test('multiple charts require exactly one active chart', () => {
   const c = setup(); let active = false;
-  const chart = {classList: { contains: () => active }, querySelectorAll: () => [row('ATR', '12')]};
+  const chart = {classList: { contains: () => active }, querySelectorAll: selector => selector === '[data-name="legend-source-item"]' ? [row('ATR', '12')] : []};
   const other = {classList: { contains: () => false }};
   c.document.querySelectorAll = () => [chart, other];
   assert.equal(c.readChartATR(), null); active = true; assert.equal(c.readChartATR(), 12);
+});
+
+test('reads screenshot ATR value without a legend-source-item ancestor', () => {
+  const c = setup();
+  const plot = {textContent: '125.1', getClientRects: () => [1]};
+  const item = {getClientRects: () => [1], querySelectorAll: selector => {
+    assert.equal(selector, '[class*="valueValue-"]');
+    return [plot];
+  }};
+  let items = [item];
+  c.document.querySelectorAll = selector => selector === '[data-test-id-value-title="ATR"]' ? items : [];
+  assert.equal(c.readChartATR(), 125.1);
+  plot.textContent = '—'; assert.equal(c.readChartATR(), null);
+  plot.textContent = '125.1';
+  plot.getClientRects = () => []; assert.equal(c.readChartATR(), null);
+  plot.getClientRects = () => [1];
+  items = [item, {getClientRects: () => [1], querySelectorAll: () => [{textContent: '99', getClientRects: () => [1]}]}];
+  assert.equal(c.readChartATR(), null);
+});
+test('deduplicates the same plot found through both markup paths', () => {
+  const c = setup();
+  const plot = {textContent: '125.1', getClientRects: () => [1]};
+  const item = {getClientRects: () => [1], querySelectorAll: () => [plot], querySelector: () => ({textContent: 'ATR'})};
+  c.document.querySelectorAll = selector => selector === '.chart-container' ? [] : [item];
+  assert.equal(c.readChartATR(), 125.1);
 });
