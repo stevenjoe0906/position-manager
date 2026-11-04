@@ -183,3 +183,28 @@ test('Apply button follows ticket direction and restores direction label after s
   assert.equal(c.btnApply.textContent, 'Position Applied! ✓');
   classes.delete('success'); c.updateApplyButton(); assert.equal(c.btnApply.textContent, 'Apply Short Position');
 });
+
+test('legacy losses migrate once; signed records and metadata survive reload', () => {
+  const c = vm.createContext({state: {}});
+  vm.runInContext(source.slice(source.indexOf('  function normalizeProfitRecords('), source.indexOf('  function saveRecordsToLocalStorage()')), c);
+  const migrated = c.normalizeProfitRecords({records: [{id: 'old', val: 50, asset: 'BTC'}]});
+  assert.equal(migrated[0].val, -50);
+  const signed = c.normalizeProfitRecords({schema: 3, records: [...migrated, {val: 100, direction: 'SHORT'}]});
+  assert.equal(signed[0].val, -50); assert.equal(signed[1].val, 100); assert.equal(signed[1].direction, 'SHORT');
+  c.state.lossRecords = signed; c.recalculateTotalLossFromRecords();
+  assert.equal(c.state.dailyProfitUSD, 50); assert.equal(c.state.currentDailyLossUSD, 50);
+  c.state.lossRecords = [{val: -80}, {val: 30}]; c.recalculateTotalLossFromRecords();
+  assert.equal(c.state.dailyProfitUSD, -50); assert.equal(c.state.currentDailyLossUSD, 80);
+  c.state.lossRecords = []; c.recalculateTotalLossFromRecords(); assert.equal(c.state.dailyProfitUSD, 0);
+});
+test('new ticket sessions enable ATR without undoing manual override in same setup', () => {
+  let requests = 0;
+  const c = vm.createContext({state: {useATR: false}, inputUseATR: {checked: false}, recordDirection: {}, requestATRStop: () => requests++});
+  vm.runInContext(source.slice(source.indexOf('  let tradeSession ='), source.indexOf('  // --- Scraper Interval Engine ---')), c);
+  c.syncTradeSession('LONG', 'BTC'); assert.equal(c.state.useATR, true); assert.equal(requests, 1);
+  c.state.useATR = false; c.inputUseATR.checked = false;
+  c.syncTradeSession('LONG', 'BTC'); assert.equal(c.state.useATR, false); assert.equal(requests, 1);
+  c.syncTradeSession(null, 'BTC'); c.syncTradeSession('LONG', 'BTC'); assert.equal(requests, 2);
+  c.syncTradeSession('SHORT', 'BTC'); assert.equal(requests, 3); assert.equal(c.recordDirection.value, 'SHORT');
+  c.syncTradeSession('SHORT', 'ETH'); assert.equal(requests, 4);
+});
