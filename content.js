@@ -32,6 +32,11 @@
     stopLossPercent: 0,     
     currentPrice: 0,        
     direction: 'LONG',
+    useATR: false,
+    atrMultiplier: 1,
+    atrValue: null,
+    atrPending: false,
+    ticketDirection: null,
     dailyLossLimitPercent: 3, 
     currentDailyLossUSD: 0,
     lossRecords: [] 
@@ -78,6 +83,20 @@
   // This also avoids createContextualFragment and innerHTML validator warnings.
   const panelStyle = document.createElement('style');
   panelStyle.textContent = "\n      .panel {\n        width: 340px;\n        background: #1c2030;\n        border: 1px solid #2a2e39;\n        border-radius: 8px;\n        padding: 16px;\n        color: #d1d4dc;\n        box-shadow: 0 10px 25px rgba(0,0,0,0.5);\n        display: block;\n      }\n      .panel.hidden { display: none; }\n\n      .global-header-row {\n        position: relative;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        width: 100%;\n        margin-bottom: 14px;\n        padding: 4px 0;\n      }\n      .header { \n        font-size: 14px; \n        font-weight: 800; \n        color: #2962ff; \n        letter-spacing: 1.5px; \n        text-transform: uppercase; \n        cursor: move; \n        text-align: center;\n        width: 100%;\n        padding: 0 32px;\n      }\n      \n      .window-icon-btn {\n        position: absolute;\n        right: 0;\n        top: 50%;\n        transform: translateY(-50%);\n        background: transparent;\n        border: none;\n        color: #787b86;\n        cursor: pointer;\n        padding: 6px;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: color 0.15s, transform 0.15s;\n        border-radius: 4px;\n      }\n      .window-icon-btn:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.05); }\n      .window-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }\n\n      .idol-quote-section {\n        display: flex;\n        align-items: center;\n        gap: 14px;\n        background: #131722;\n        border: 1px solid #2a2e39;\n        border-radius: 6px;\n        padding: 12px 14px;\n        margin-bottom: 14px;\n      }\n      .idol-avatar-box {\n        width: 48px;\n        height: 48px;\n        border-radius: 50%;\n        border: 2px solid #2a2e39;\n        overflow: hidden;\n        flex-shrink: 0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        background: #1c2030;\n      }\n      .idol-avatar-box img {\n        width: 100%;\n        height: 100%;\n        object-fit: cover;\n      }\n      .idol-text-box {\n        flex: 1;\n        display: flex;\n        align-items: center;\n      }\n      .idol-quote-content {\n        font-size: 14px;\n        line-height: 18px;\n        color: #e0e3eb;\n        font-style: italic;\n        font-weight: 600;\n      }\n\n      .expand-trigger-anchor {\n        position: fixed;\n        right: 0;\n        top: 50%;\n        transform: translateY(-50%);\n        width: 24px;\n        height: 60px;\n        background: #1c2030;\n        border: 1px solid #2a2e39;\n        border-right: none;\n        border-radius: 8px 0 0 8px;\n        display: none;\n        align-items: center;\n        justify-content: center;\n        color: #2962ff;\n        cursor: pointer;\n        box-shadow: -4px 0 15px rgba(0,0,0,0.4);\n        z-index: 99999999;\n        transition: color 0.15s, background-color 0.15s;\n      }\n      .expand-trigger-anchor:hover { background: #131722; color: #00e676; }\n      .expand-trigger-anchor.visible { display: flex; }\n      .expand-trigger-anchor svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }\n\n      .price { font-size: 24px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 4px; }\n      \n      .direction-badge { \n        display: none; \n        font-size: 14px; \n        font-weight: 800; \n        text-align: center; \n        margin-bottom: 14px; \n        border-bottom: 1px solid #2a2e39; \n        padding-bottom: 10px; \n      }\n      .direction-badge.visible { display: block; }\n      .dir-long { color: #00e676; }\n      .dir-short { color: #ff5252; }\n\n      .grid { display: flex; gap: 12px; margin-bottom: 12px; }\n      .grid > div { flex: 1; }\n      label { display: block; font-size: 14px; color: #787b86; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; }\n      input { width: 100%; padding: 8px 10px; background: #131722; border: 1px solid #2a2e39; border-radius: 4px; color: #ffffff; box-sizing: border-box; font-size: 14px; }\n      input:focus { border-color: #2962ff; outline: none; }\n      .read-only-badge { font-size: 11px; background: #2962ff22; color: #2962ff; padding: 2px 5px; border-radius: 3px; float: right; margin-top: 2px; }\n      \n      .tracker-block { \n        background: #131722; \n        padding: 10px; \n        border-radius: 6px; \n        border: 1px solid #2a2e39; \n        margin-bottom: 12px; \n      }\n      .tracker-flex { \n        display: flex; \n        justify-content: space-between; \n        align-items: center; \n        font-size: 14px; \n      }\n      .loss-input-row { display: flex; gap: 8px; margin-top: 10px; margin-bottom: 10px; }\n      \n      .inline-add-icon-btn { \n        background: transparent; \n        border: 1px solid #2a2e39; \n        color: #787b86; \n        padding: 0 12px; \n        border-radius: 4px; \n        cursor: pointer; \n        transition: color 0.15s, background-color 0.15s, border-color 0.15s; \n        display: flex;\n        align-items: center;\n        justify-content: center;\n      }\n      .inline-add-icon-btn:hover { color: #ffffff; background-color: #2a2e39; border-color: #787b86; }\n      .inline-add-icon-btn svg { width: 14px; height: 14px; fill: currentColor; }\n\n      .action-icon-btn {\n        background: transparent;\n        border: none;\n        color: #787b86;\n        cursor: pointer;\n        padding: 4px;\n        border-radius: 4px;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: color 0.15s, background-color 0.15s;\n      }\n      .action-icon-btn:hover { color: #ffffff; background-color: #2a2e39; }\n      .action-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }\n\n      .loss-log-list { \n        max-height: 125px; \n        overflow-y: auto; \n        border-top: 1px solid #2a2e39; \n        padding-top: 8px;\n        display: flex;\n        flex-direction: column;\n        gap: 6px;\n      }\n      .loss-log-list::-webkit-scrollbar { width: 4px; }\n      .loss-log-list::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 2px; }\n      \n      .loss-log-item {\n        display: flex;\n        justify-content: space-between;\n        align-items: center;\n        background: #1c2030;\n        padding: 6px 10px;\n        border-radius: 4px;\n        border: 1px solid #2a2e39;\n      }\n      .log-meta-stack { display: flex; flex-direction: column; gap: 2px; }\n      .log-primary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }\n      .log-ticker-name { color: #b2b5be; }\n      .log-val-amount { color: #ff5252; font-weight: bold; }\n      .log-time-secondary { font-size: 11px; color: #5d606b; font-variant-numeric: tabular-nums; font-weight: normal; }\n      \n      .remove-log-btn {\n        background: transparent;\n        border: none;\n        padding: 4px;\n        cursor: pointer;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        color: #787b86;\n        border-radius: 3px;\n        transition: color 0.15s, background 0.15s;\n      }\n      .remove-log-btn:hover { color: #ff5252; background: rgba(255, 82, 82, 0.15); }\n      .remove-log-btn svg { width: 12px; height: 12px; fill: currentColor; }\n\n      .output-area { background: #131722; padding: 14px; border-radius: 6px; border: 1px solid #2a2e39; margin-top: 16px; }\n      .output-lbl { font-size: 14px; color: #787b86; text-transform: uppercase; font-weight: bold; }\n      .output-val { font-size: 26px; font-weight: bold; color: #00e676; margin: 6px 0 2px 0; font-variant-numeric: tabular-nums; }\n      \n      .aux-container { font-size: 13px; color: #787b86; margin-bottom: 6px; display: flex; justify-content: space-between; }\n      .aux-val { color: #b2b5be; font-weight: 500; font-variant-numeric: tabular-nums; }\n      .aux-val-danger { color: #ff5252; font-weight: 700; font-variant-numeric: tabular-nums; }\n\n      .apply-btn { width: 100%; border: none; color: #ffffff; background: #2962ff; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.15s; margin-top: 8px; }\n      .apply-btn:hover { background: #1e4bd8; }\n      .apply-btn.success { background: #00e676; color: #131722; }\n      .apply-btn:disabled { background: #2a2e39; color: #787b86; cursor: not-allowed; }\n      \n      .warning { display: none; background: rgba(255, 82, 82, 0.15); border: 1px solid #ff5252; color: #ff5252; padding: 8px; border-radius: 4px; font-size: 14px; margin-top: 10px; font-weight: bold; text-align: center; }\n      .warning.active { display: block; }\n    ";
+  panelStyle.textContent += `
+    .panel { max-height: calc(100vh - 110px); overflow-y: auto; }
+    .apply-btn.long { background: #31BD65; }
+    .apply-btn.long:hover { background: #279751; }
+    .apply-btn.short { background: #F23645; }
+    .apply-btn.short:hover { background: #CE2432; }
+    .apply-btn:disabled, .apply-btn:disabled:hover { background: #2a2e39; color: #787b86; }
+    .atr-toggle { text-transform: none; display: flex; align-items: center; gap: 8px; }
+    .atr-toggle input { width: auto; }
+    .atr-options { display: flex; gap: 6px; margin: 8px 0; }
+    .atr-options button { font-size: 16px; font-weight: 600; flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
+    .atr-options button[aria-pressed="true"] { border-color: #2962ff; background: #2962ff33; color: #fff; }
+    .atr-status { font-size: 12px; color: #b2b5be; line-height: 1.4; }
+  `;
   shadowRoot.appendChild(panelStyle);
 
   const svgNS = 'http://www.w3.org/2000/svg';
@@ -108,10 +127,6 @@
   const panelEl13 = addPanelElement(panelEl10, "div", {"class": "idol-text-box"});
   const panelEl14 = addPanelElement(panelEl13, "span", {"class": "idol-quote-content"});
   panelEl14.appendChild(document.createTextNode("\"It never was my thinking that made the big money for me. It always was my sitting.\""));
-  const panelEl15 = addPanelElement(panelEl4, "div", {"class": "price", "id": "tv-price"});
-  panelEl15.appendChild(document.createTextNode("Connecting..."));
-  const panelEl16 = addPanelElement(panelEl4, "div", {"class": "direction-badge", "id": "tv-direction"});
-  panelEl16.appendChild(document.createTextNode("Opening Long"));
   const panelEl17 = addPanelElement(panelEl4, "div", {"class": "tracker-block"});
   const panelEl18 = addPanelElement(panelEl17, "div", {"class": "tracker-flex"});
   const panelEl19 = addPanelElement(panelEl18, "div", {});
@@ -155,6 +170,21 @@
   const panelEl50 = addPanelElement(panelEl49, "label", {});
   panelEl50.appendChild(document.createTextNode("Stop Loss Price"));
   const panelEl51 = addPanelElement(panelEl49, "input", {"type": "number", "id": "sl-price", "step": "0.00001", "placeholder": "Type SL..."});
+  const atrBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
+  const atrLabel = addPanelElement(atrBlock, 'label', { class: 'atr-toggle' });
+  const inputUseATR = addPanelElement(atrLabel, 'input', { type: 'checkbox', id: 'use-atr' });
+  addPanelElement(atrLabel, 'span', {}, 'Use ATR for stop loss price');
+  const atrControls = addPanelElement(atrBlock, 'div', { hidden: '' });
+  const atrStatus = addPanelElement(atrControls, 'div', { class: 'atr-status', role: 'status', style: 'font-size: 14px;' });
+  const atrMultipliers = addPanelElement(atrControls, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR multiplier' });
+  const atrMultiplierButtons = [1, 1.5, 2].map(multiplier => {
+    const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': String(multiplier === 1) }, `${multiplier}x`);
+    button.addEventListener('click', () => {
+      state.atrMultiplier = multiplier;
+      requestATRStop();
+    });
+    return button;
+  });
   const panelEl52 = addPanelElement(panelEl4, "div", {"style": "margin-bottom: 12px;"});
   const panelEl53 = addPanelElement(panelEl52, "label", {});
   panelEl53.appendChild(document.createTextNode("SL Distance "));
@@ -204,8 +234,6 @@
   const btnExpand = shadowRoot.getElementById('widget-expand-trigger');
 
   const dragHandle = shadowRoot.getElementById('drag-handle');
-  const elPrice = shadowRoot.getElementById('tv-price');
-  const elDirection = shadowRoot.getElementById('tv-direction');
   const elAmount = shadowRoot.getElementById('amount-display');
   const elNominal = shadowRoot.getElementById('nominal-display');
   const elMargin = shadowRoot.getElementById('margin-display'); 
@@ -321,23 +349,28 @@
     });
   }
 
+  function updateApplyButton() {
+    const direction = state.ticketDirection;
+    btnApply.classList.toggle('long', direction === 'LONG');
+    btnApply.classList.toggle('short', direction === 'SHORT');
+    if (!btnApply.classList.contains('success')) {
+      btnApply.textContent = direction === 'LONG' ? 'Apply Long Position'
+        : direction === 'SHORT' ? 'Apply Short Position' : 'Apply Position';
+    }
+  }
+
   function calculateRiskSystem() {
+    updateApplyButton();
     if (state.stopLossPrice > 0 && state.entryPrice > 0) {
-      elDirection.classList.add('visible');
       if (state.stopLossPrice >= state.entryPrice) {
         state.direction = 'SHORT';
-        elDirection.textContent = '⚔️ Opening Short';
-        elDirection.className = 'direction-badge visible dir-short';
         state.stopLossPercent = ((state.stopLossPrice - state.entryPrice) / state.entryPrice) * 100;
       } else {
         state.direction = 'LONG';
-        elDirection.textContent = '🛡️ Opening Long';
-        elDirection.className = 'direction-badge visible dir-long';
         state.stopLossPercent = ((state.entryPrice - state.stopLossPrice) / state.entryPrice) * 100;
       }
-      inputSLDistance.value = `${state.stopLossPercent.toFixed(2)}%`;
+      inputSLDistance.value = `${state.stopLossPercent.toFixed(2)}% · ${Number(Math.abs(state.entryPrice - state.stopLossPrice).toPrecision(12))}`;
     } else {
-      elDirection.classList.remove('visible'); 
       inputSLDistance.value = '0.00%';
       state.stopLossPercent = 0;
     }
@@ -486,11 +519,14 @@
   
   inputEntryPrice.addEventListener('input', (e) => {
     state.entryPrice = Number(e.target.value);
+    if (state.useATR) requestATRStop();
     calculateRiskSystem();
   });
 
   inputSLPrice.addEventListener('input', (e) => {
     state.stopLossPrice = Number(e.target.value);
+    disableATR();
+    queueTicketStop(state.stopLossPrice);
     calculateRiskSystem();
   });
 
@@ -506,8 +542,8 @@
       btnApply.textContent = 'Position Applied! ✓';
       btnApply.classList.add('success');
       setTimeout(() => {
-        btnApply.textContent = 'Apply Position';
         btnApply.classList.remove('success');
+        updateApplyButton();
       }, 1000);
     } else {
       console.warn("Target #quantity-field element not found on page.");
@@ -518,6 +554,169 @@
     if (!text) return 0;
     return parseFloat(text.replace(/[^0-9.-]/g, '')) || 0;
   }
+
+  const ticketStopSelector = 'input[data-qa-id~="order-ticket-stop-loss-input"]';
+  let writingTicketStop = false;
+  let pendingTicketStop = null;
+  let lastTicketStopValue;
+
+  function readTicketDirection() {
+    const sides = ['buy', 'sell'].filter(side =>
+      Array.from(document.querySelectorAll('[data-name="side-control-' + side + '"]')).some(el =>
+        el.getClientRects().length && Array.from(el.classList).some(name => name === 'active' || name.startsWith('active-'))
+      )
+    );
+    return sides.length === 1 ? (sides[0] === 'buy' ? 'LONG' : 'SHORT') : null;
+  }
+
+  function readTicketLeverage() {
+    const buttons = Array.from(document.querySelectorAll('[data-qa-id="leverage-button"]')).filter(el => el.getClientRects().length);
+    if (buttons.length !== 1) return null;
+    const match = buttons[0].textContent.trim().match(/^(\d+(?:\.\d+)?)\s*[x×]$/i);
+    const value = match ? Number(match[1]) : 0;
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  function disableATR() {
+    state.useATR = false;
+    state.atrPending = false;
+    inputUseATR.checked = false;
+    pendingTicketStop = null;
+    updateATRControls();
+  }
+
+  function queueTicketStop(value) {
+    pendingTicketStop = Number.isFinite(value) && value > 0 ? { value, attempts: 0 } : null;
+    flushTicketStop();
+  }
+
+  function flushTicketStop() {
+    if (!pendingTicketStop) return;
+    if (++pendingTicketStop.attempts > 10) {
+      pendingTicketStop = null;
+      console.warn('Could not fill TradingView stop loss. Check the order ticket.');
+      return;
+    }
+    writingTicketStop = true;
+    try {
+      const toggle = document.querySelector('input[data-qa-id="order-ticket-stop-loss-checkbox-bracket"]');
+      if (toggle && !toggle.checked) toggle.click();
+      // Enabling the switch can mount the input on a subsequent render.
+      const input = document.querySelector(ticketStopSelector);
+      if (!input || input.disabled || (toggle && !toggle.checked)) return;
+      setNativeInputValue(input, String(pendingTicketStop.value));
+      lastTicketStopValue = input.value;
+      pendingTicketStop = null;
+    } finally {
+      writingTicketStop = false;
+    }
+  }
+
+  function acceptTicketStop(input) {
+    lastTicketStopValue = input.value;
+    disableATR();
+    state.stopLossPrice = cleanAndParseFloat(input.value);
+    inputSLPrice.value = input.value === '' ? '' : state.stopLossPrice;
+    calculateRiskSystem();
+  }
+
+  // Capture before TradingView can stop propagation; some controls emit change
+  // only. Polling also catches drag/stepper updates that emit neither event.
+  function onTicketStopEdit(event) {
+    if (writingTicketStop || !event.target.matches?.(ticketStopSelector)) return;
+    acceptTicketStop(event.target);
+  }
+  document.addEventListener('input', onTicketStopEdit, true);
+  document.addEventListener('change', onTicketStopEdit, true);
+
+  function observeTicketStop() {
+    const input = document.querySelector(ticketStopSelector);
+    if (!input || writingTicketStop || pendingTicketStop) return;
+    if (lastTicketStopValue !== undefined && input.value !== lastTicketStopValue) {
+      acceptTicketStop(input);
+    } else {
+      lastTicketStopValue = input.value;
+    }
+  }
+
+  // Read only a named ATR study's value, never its length/settings or another indicator.
+  // TradingView's legend follows the crosshair, so this is the displayed value.
+  function readChartATR() {
+    const charts = Array.from(document.querySelectorAll('.chart-container'));
+    const active = charts.filter(chart => chart.classList.contains('active'));
+    if (charts.length > 1 && active.length !== 1) return null;
+    const scope = active[0] || charts[0] || document;
+    const rows = scope.querySelectorAll('[data-name="legend-source-item"]');
+    const plotsToRead = new Set();
+    // Current TradingView markup labels the plot itself, without requiring
+    // a legend-source-item/title ancestor. Match the stable attribute, not
+    // the generated class suffix (for example valueValue-quatTGAC).
+    for (const item of scope.querySelectorAll('[data-test-id-value-title="ATR"]')) {
+      if (!item.getClientRects().length) continue;
+      const plots = item.querySelectorAll('[class*="valueValue-"]');
+      if (plots.length === 1) plotsToRead.add(plots[0]);
+    }
+    for (const row of rows) {
+      if (!row.getClientRects().length) continue;
+      const title = row.querySelector('[data-name="legend-source-title"]');
+      if (!title || !/^(ATR|Average True Range)(?:$|\s|\()/i.test(title.textContent.trim())) continue;
+      const plots = row.querySelectorAll('[data-name="legend-source-value"], [class*="valueValue-"]');
+      if (plots.length !== 1) continue;
+      plotsToRead.add(plots[0]);
+    }
+    const values = [];
+    for (const plot of plotsToRead) {
+      if (!plot.getClientRects().length) continue;
+      const text = plot.textContent.trim().replace(/[\u200e\u200f\u2212]/g, c => c === '\u2212' ? '-' : '').replace(/,/g, '');
+      if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(text)) continue;
+      const value = Number(text);
+      if (Number.isFinite(value) && value > 0) values.push(value);
+    }
+    return values.length === 1 ? values[0] : null;
+  }
+
+  function updateATRControls() {
+    atrControls.hidden = !state.useATR;
+    atrMultiplierButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.atrMultiplier === [1, 1.5, 2][index])));
+    atrStatus.textContent = state.atrValue === null
+      ? 'ATR: unavailable'
+      : `ATR: ${state.atrValue}`;
+  }
+
+  function applyATRStop() {
+    if (!state.useATR || !state.atrPending || state.atrValue === null) return;
+    if (shadowRoot.activeElement === inputSLPrice || !state.ticketDirection) return;
+    state.direction = state.ticketDirection;
+    const stop = state.entryPrice + (state.direction === 'SHORT' ? 1 : -1) * state.atrMultiplier * state.atrValue;
+    state.stopLossPrice = state.entryPrice > 0 && Number.isFinite(stop) && stop > 0
+      ? Number(stop.toPrecision(12)) : 0;
+    // Reject a distance lost to floating-point rounding.
+    if (state.stopLossPrice === state.entryPrice) state.stopLossPrice = 0;
+    inputSLPrice.value = state.stopLossPrice || '';
+    state.atrPending = false;
+    queueTicketStop(state.stopLossPrice);
+  }
+
+  function requestATRStop() {
+    pendingTicketStop = null;
+    state.ticketDirection = readTicketDirection();
+    state.atrValue = readChartATR();
+    state.atrPending = true;
+    // Do not keep sizing from a previous entry's stop while waiting for ATR.
+    state.stopLossPrice = 0;
+    inputSLPrice.value = '';
+    applyATRStop();
+    updateATRControls();
+    calculateRiskSystem();
+  }
+
+  inputUseATR.addEventListener('change', () => {
+    state.useATR = inputUseATR.checked;
+    state.atrPending = false;
+    pendingTicketStop = null;
+    if (state.useATR) requestATRStop();
+    updateATRControls();
+  });
 
   // --- Scraper Interval Engine ---
   setInterval(() => {
@@ -580,10 +779,6 @@
     // Update State & UI for Live Price
     if (extractedPrice > 0) {
       state.currentPrice = extractedPrice;
-      elPrice.textContent = `$${state.currentPrice.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 5
-      })}`;
     }
 
     // 3. Cross-Browser Account Equity Scraper
@@ -621,6 +816,21 @@
       }
     }
 
+    observeTicketStop();
+    const ticketDirection = readTicketDirection();
+    const directionChanged = state.ticketDirection !== ticketDirection;
+    state.ticketDirection = ticketDirection;
+    if (state.useATR && directionChanged) requestATRStop();
+
+    const leverage = readTicketLeverage();
+    if (leverage !== null) {
+      state.leverage = leverage;
+      if (shadowRoot.activeElement !== shadowRoot.getElementById('lev')) {
+        shadowRoot.getElementById('lev').value = leverage;
+      }
+    }
+    flushTicketStop();
+
     // 4. Entry / Stop-Loss Price Automation
     // data-qa-id contains space-separated tokens, so use ~= instead of an exact match.
     const entryInputDom = document.querySelector(
@@ -631,23 +841,31 @@
       autoEntryPrice = cleanAndParseFloat(entryInputDom.value);
     }
 
-    const slInputDom = document.querySelector('[data-qa-id*="order-ticket-stop-loss-input"]');
+    const slInputDom = document.querySelector(ticketStopSelector);
     let autoSLPrice = 0;
     if (slInputDom) {
       autoSLPrice = cleanAndParseFloat(slInputDom.value);
     }
 
     if (autoEntryPrice > 0 && shadowRoot.activeElement !== inputEntryPrice) {
+      const entryChanged = state.entryPrice !== autoEntryPrice;
       state.entryPrice = autoEntryPrice;
       inputEntryPrice.value = autoEntryPrice;
+      if (state.useATR && entryChanged) requestATRStop();
     }
 
-    if (autoSLPrice > 0 && shadowRoot.activeElement !== inputSLPrice) {
+    if (!state.useATR && !pendingTicketStop && autoSLPrice > 0 && shadowRoot.activeElement !== inputSLPrice) {
       state.stopLossPrice = autoSLPrice;
       inputSLPrice.value = autoSLPrice;
     }
 
+    if (state.useATR) {
+      state.atrValue = readChartATR();
+      applyATRStop();
+      updateATRControls();
+    }
     calculateRiskSystem();
   }, 500);
 
 })();
+

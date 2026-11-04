@@ -75,6 +75,21 @@ Firefox removes temporary extensions when the browser closes, so you must load i
 
 The extension does not submit an order. Review every value in TradingView before placing the trade.
 
+## ATR stop loss
+
+Add one ATR indicator to the active TradingView chart and keep its legend value visible. Enable **Use ATR for stop loss price**, then select **1x**, **1.5x**, or **2x** (default: 1x). The current ATR appears above the buttons.
+
+- Direction comes from the active Buy/Sell control in TradingView's order ticket. Buy subtracts ATR distance from entry; Sell adds it. No calculation is made when direction cannot be detected.
+- Choosing an ATR option fills the order ticket's stop-loss price and enables its stop-loss switch if needed. Changing entry or the page's Buy/Sell direction also recalculates and fills the stop while ATR mode is enabled.
+- Live ATR changes update the displayed ATR without moving the stop. Click the selected multiplier again to apply the latest displayed value.
+- Editing the stop manually in either the panel or the order ticket unchecks ATR mode. Panel edits are copied to the ticket; ticket edits update the panel and position sizing.
+- SL Distance shows both percentage and absolute price distance.
+- Leverage is read automatically from the order ticket's leverage button when available; manual entry remains available when detection fails.
+- The reader uses the displayed legend value, which can follow the crosshair over historical candles. Move the pointer off historical candles before applying ATR.
+- Missing or ambiguous ATR data clears a requested calculation while waiting for a valid value. Multiple charts require a detectable active chart, and multiple ATR studies are unsupported.
+- Stop-loss writing expects the ticket field to be in absolute-price mode, as shown by its price value. Review the ticket's field mode and resulting value.
+- **Apply Position** copies position quantity. ATR controls fill the stop-loss field, but the extension never submits an order.
+
 ## Daily-loss tracking
 
 Enter each realized loss in the **Daily Loss** section. Records include the current symbol and time and are stored locally in the browser. They reset automatically when the local calendar date changes.
@@ -115,6 +130,8 @@ https://*.tradingview.com/*
 ## Development
 
 There is no build step or package dependency. Edit `content.js`, reload the unpacked extension from your browser's extension page, and refresh TradingView to test changes.
+
+Run the dependency-free ATR unit tests with `node --test tests/atr.test.cjs` and check syntax with `node --check content.js`. These tests use DOM fixtures, not a live TradingView page.
 
 ## Disclaimer
 
