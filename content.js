@@ -39,26 +39,28 @@
     ticketDirection: null,
     dailyLossLimitPercent: 3, 
     currentDailyLossUSD: 0,
+    dailyProfitUSD: 0,
     lossRecords: [] 
   };
 
   // 2. Storage Setup
   const dateKey = getTodayString();
-  const storedData = localStorage.getItem('alphasize_daily_metrics_v2');
+  const storedData = localStorage.getItem('alphasize_daily_metrics_v3') || localStorage.getItem('alphasize_daily_metrics_v2');
   
   if (storedData) {
     try {
       const parsed = JSON.parse(storedData);
       if (parsed.date === dateKey) {
-        state.lossRecords = parsed.records || [];
+        state.lossRecords = normalizeProfitRecords(parsed);
+        localStorage.setItem('alphasize_daily_metrics_v3', JSON.stringify({ date: dateKey, schema: 3, records: state.lossRecords }));
       } else {
-        localStorage.setItem('alphasize_daily_metrics_v2', JSON.stringify({ date: dateKey, records: [] }));
+        localStorage.setItem('alphasize_daily_metrics_v3', JSON.stringify({ date: dateKey, records: [] }));
       }
     } catch (e) {
       console.error("Failed parsing loss records", e);
     }
   } else {
-    localStorage.setItem('alphasize_daily_metrics_v2', JSON.stringify({ date: dateKey, records: [] }));
+    localStorage.setItem('alphasize_daily_metrics_v3', JSON.stringify({ date: dateKey, records: [] }));
   }
 
   recalculateTotalLossFromRecords();
@@ -131,14 +133,17 @@
   const panelEl18 = addPanelElement(panelEl17, "div", {"class": "tracker-flex"});
   const panelEl19 = addPanelElement(panelEl18, "div", {});
   const panelEl20 = addPanelElement(panelEl19, "span", {"style": "color:#787b86; font-size: 14px; font-weight: bold; text-transform: uppercase; margin-right: 4px;"});
-  panelEl20.appendChild(document.createTextNode("Daily Loss:"));
+  panelEl20.appendChild(document.createTextNode("Daily Profit:"));
   const panelEl21 = addPanelElement(panelEl19, "span", {"id": "loss-display", "style": "font-weight: bold; color: #ffffff;"});
   panelEl21.appendChild(document.createTextNode("$0.00"));
   const panelEl22 = addPanelElement(panelEl18, "button", {"class": "action-icon-btn", "id": "clear-all-btn", "title": "Clear All Log Entries"});
   const panelEl23 = addPanelElement(panelEl22, "svg", {"viewBox": "0 0 24 24"});
   const panelEl24 = addPanelElement(panelEl23, "path", {"d": "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"});
   const panelEl25 = addPanelElement(panelEl17, "div", {"class": "loss-input-row"});
-  const panelEl26 = addPanelElement(panelEl25, "input", {"type": "number", "id": "loss-adder", "placeholder": "Add loss ($)...", "style": "font-size: 14px; padding: 6px 8px;"});
+  const panelEl26 = addPanelElement(panelEl25, "input", {"type": "number", "id": "loss-adder", "placeholder": "+Profit / -Loss ($)", "step": "any", "aria-label": "Profit or loss in dollars", "style": "font-size: 14px; padding: 6px 8px;"});
+  const recordDirection = addPanelElement(panelEl25, 'select', { 'aria-label': 'Trade direction', style: 'background: #131722; color: #fff; border: 1px solid #2a2e39; border-radius: 4px; font-size: 14px;' });
+  addPanelElement(recordDirection, 'option', { value: 'LONG' }, 'Long');
+  addPanelElement(recordDirection, 'option', { value: 'SHORT' }, 'Short');
   const panelEl27 = addPanelElement(panelEl25, "button", {"class": "inline-add-icon-btn", "id": "add-loss-btn", "title": "Commit Log Entry"});
   const panelEl28 = addPanelElement(panelEl27, "svg", {"viewBox": "0 0 24 24"});
   const panelEl29 = addPanelElement(panelEl28, "path", {"d": "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"});
@@ -185,13 +190,10 @@
     });
     return button;
   });
-  const panelEl52 = addPanelElement(panelEl4, "div", {"style": "margin-bottom: 12px;"});
-  const panelEl53 = addPanelElement(panelEl52, "label", {});
-  panelEl53.appendChild(document.createTextNode("SL Distance "));
-  const panelEl54 = addPanelElement(panelEl53, "span", {"class": "read-only-badge"});
-  panelEl54.appendChild(document.createTextNode("AUTO"));
-  const panelEl55 = addPanelElement(panelEl52, "input", {"type": "text", "id": "sl-distance", "value": "0.00%", "disabled": "", "style": "opacity: 0.7; cursor: not-allowed;"});
   const panelEl56 = addPanelElement(panelEl4, "div", {"class": "output-area"});
+  const distanceRow = addPanelElement(panelEl56, 'div', { class: 'aux-container' });
+  addPanelElement(distanceRow, 'span', {}, 'Stop Loss Distance:');
+  addPanelElement(distanceRow, 'span', { class: 'aux-val', id: 'sl-distance' }, '0.00% · 0');
   const panelEl57 = addPanelElement(panelEl56, "div", {"class": "output-lbl"});
   panelEl57.appendChild(document.createTextNode("Amount (Tokens / Units)"));
   const panelEl58 = addPanelElement(panelEl56, "div", {"class": "output-val", "id": "amount-display"});
@@ -276,7 +278,7 @@
     });
   };
 
-  shadowRoot.querySelectorAll('input').forEach(input => {
+  shadowRoot.querySelectorAll('input, select').forEach(input => {
     isolateKeyboardEvents(input);
   });
 
@@ -285,20 +287,32 @@
     btn.addEventListener('mousedown', (e) => e.stopPropagation());
   });
 
+  function normalizeProfitRecords(parsed) {
+    return (Array.isArray(parsed.records) ? parsed.records : [])
+      .filter(record => Number.isFinite(record.val))
+      .map(record => ({ ...record, val: parsed.schema === 3 ? record.val : -Math.abs(record.val) }));
+  }
+
   function recalculateTotalLossFromRecords() {
-    state.currentDailyLossUSD = state.lossRecords.reduce((acc, curr) => acc + curr.val, 0);
+    state.dailyProfitUSD = state.lossRecords.reduce((total, record) => total + record.val, 0);
+    state.currentDailyLossUSD = state.lossRecords.reduce((total, record) => total + Math.max(0, -record.val), 0);
+  }
+
+  function formatProfit(value) {
+    return `${value < 0 ? '-' : value > 0 ? '+' : ''}${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
   function saveRecordsToLocalStorage() {
-    localStorage.setItem('alphasize_daily_metrics_v2', JSON.stringify({
+    localStorage.setItem('alphasize_daily_metrics_v3', JSON.stringify({
       date: getTodayString(),
+      schema: 3,
       records: state.lossRecords
     }));
   }
 
   function renderLossLogsUI() {
-    elLossDisplay.textContent = `$${state.currentDailyLossUSD.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-    elLossDisplay.style.color = state.currentDailyLossUSD > 0 ? '#ff5252' : '#ffffff';
+    elLossDisplay.textContent = formatProfit(state.dailyProfitUSD);
+    elLossDisplay.style.color = state.dailyProfitUSD < 0 ? '#F23645' : '#31BD65';
 
     containerLogList.replaceChildren();
     if (state.lossRecords.length === 0) {
@@ -320,8 +334,16 @@
       assetName.textContent = record.asset || 'UNKNOWN';
       const amount = document.createElement('span');
       amount.className = 'log-val-amount';
-      amount.textContent = `-$${record.val.toFixed(2)}`;
-      primaryRow.append(assetName, amount);
+      amount.textContent = formatProfit(record.val);
+      amount.style.color = record.val < 0 ? '#F23645' : '#31BD65';
+      primaryRow.append(assetName);
+      if (record.direction === 'LONG' || record.direction === 'SHORT') {
+        const direction = document.createElement('span');
+        direction.textContent = record.direction === 'LONG' ? 'Long' : 'Short';
+        direction.style.color = record.direction === 'LONG' ? '#31BD65' : '#F23645';
+        primaryRow.append(direction);
+      }
+      primaryRow.append(amount);
       const time = document.createElement('span');
       time.className = 'log-time-secondary';
       time.textContent = record.time;
@@ -369,9 +391,9 @@
         state.direction = 'LONG';
         state.stopLossPercent = ((state.entryPrice - state.stopLossPrice) / state.entryPrice) * 100;
       }
-      inputSLDistance.value = `${state.stopLossPercent.toFixed(2)}% · ${Number(Math.abs(state.entryPrice - state.stopLossPrice).toPrecision(12))}`;
+      inputSLDistance.textContent = `${state.stopLossPercent.toFixed(2)}% · ${Number(Math.abs(state.entryPrice - state.stopLossPrice).toPrecision(12))}`;
     } else {
-      inputSLDistance.value = '0.00%';
+      inputSLDistance.textContent = '0.00% · 0';
       state.stopLossPercent = 0;
     }
 
@@ -439,8 +461,8 @@
   }
 
   function commitClosedLoss() {
-    const lossVal = Math.abs(parseFloat(inputLossAdder.value)) || 0;
-    if (lossVal > 0) {
+    const lossVal = Number(inputLossAdder.value);
+    if (Number.isFinite(lossVal) && lossVal !== 0) {
       const now = new Date();
       const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
       
@@ -448,6 +470,7 @@
         id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11),
         time: timeString,
         val: lossVal,
+        direction: recordDirection.value,
         asset: state.assetName
       });
 
@@ -471,7 +494,7 @@
   }
 
   function masterClearAllLosses() {
-    if (confirm("Are you sure you want to clear all loss records for today?")) {
+    if (confirm("Are you sure you want to clear all profit and loss records for today?")) {
       state.lossRecords = [];
       recalculateTotalLossFromRecords();
       saveRecordsToLocalStorage();
@@ -718,15 +741,31 @@
     updateATRControls();
   });
 
+  let tradeSession = null;
+  function syncTradeSession(direction, symbol) {
+    if (!direction) {
+      tradeSession = null;
+      return;
+    }
+    const key = symbol + ':' + direction;
+    if (tradeSession === key) return;
+    tradeSession = key;
+    recordDirection.value = direction;
+    state.useATR = true;
+    inputUseATR.checked = true;
+    requestATRStop();
+  }
+
   // --- Scraper Interval Engine ---
   setInterval(() => {
     const currentCheckDate = getTodayString();
     
-    const storageCheck = JSON.parse(localStorage.getItem('alphasize_daily_metrics_v2') || '{}');
+    const storageCheck = JSON.parse(localStorage.getItem('alphasize_daily_metrics_v3') || '{}');
     if (storageCheck.date && storageCheck.date !== currentCheckDate) {
       state.lossRecords = [];
       state.currentDailyLossUSD = 0;
-      localStorage.setItem('alphasize_daily_metrics_v2', JSON.stringify({ date: currentCheckDate, records: [] }));
+      state.dailyProfitUSD = 0;
+      localStorage.setItem('alphasize_daily_metrics_v3', JSON.stringify({ date: currentCheckDate, records: [] }));
       renderLossLogsUI();
     }
 
@@ -818,9 +857,7 @@
 
     observeTicketStop();
     const ticketDirection = readTicketDirection();
-    const directionChanged = state.ticketDirection !== ticketDirection;
     state.ticketDirection = ticketDirection;
-    if (state.useATR && directionChanged) requestATRStop();
 
     const leverage = readTicketLeverage();
     if (leverage !== null) {
@@ -859,6 +896,7 @@
       inputSLPrice.value = autoSLPrice;
     }
 
+    syncTradeSession(ticketDirection, state.assetName);
     if (state.useATR) {
       state.atrValue = readChartATR();
       applyATRStop();
