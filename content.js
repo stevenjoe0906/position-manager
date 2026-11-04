@@ -39,26 +39,28 @@
     ticketDirection: null,
     dailyLossLimitPercent: 3, 
     currentDailyLossUSD: 0,
+    dailyProfitUSD: 0,
     lossRecords: [] 
   };
 
   // 2. Storage Setup
   const dateKey = getTodayString();
-  const storedData = localStorage.getItem('alphasize_daily_metrics_v2');
+  const storedData = localStorage.getItem('alphasize_daily_metrics_v3') || localStorage.getItem('alphasize_daily_metrics_v2');
   
   if (storedData) {
     try {
       const parsed = JSON.parse(storedData);
       if (parsed.date === dateKey) {
-        state.lossRecords = parsed.records || [];
+        state.lossRecords = normalizeProfitRecords(parsed);
+        localStorage.setItem('alphasize_daily_metrics_v3', JSON.stringify({ date: dateKey, schema: 3, records: state.lossRecords }));
       } else {
-        localStorage.setItem('alphasize_daily_metrics_v2', JSON.stringify({ date: dateKey, records: [] }));
+        localStorage.setItem('alphasize_daily_metrics_v3', JSON.stringify({ date: dateKey, records: [] }));
       }
     } catch (e) {
       console.error("Failed parsing loss records", e);
     }
   } else {
-    localStorage.setItem('alphasize_daily_metrics_v2', JSON.stringify({ date: dateKey, records: [] }));
+    localStorage.setItem('alphasize_daily_metrics_v3', JSON.stringify({ date: dateKey, records: [] }));
   }
 
   recalculateTotalLossFromRecords();
@@ -131,14 +133,17 @@
   const panelEl18 = addPanelElement(panelEl17, "div", {"class": "tracker-flex"});
   const panelEl19 = addPanelElement(panelEl18, "div", {});
   const panelEl20 = addPanelElement(panelEl19, "span", {"style": "color:#787b86; font-size: 14px; font-weight: bold; text-transform: uppercase; margin-right: 4px;"});
-  panelEl20.appendChild(document.createTextNode("Daily Loss:"));
+  panelEl20.appendChild(document.createTextNode("Daily Profit:"));
   const panelEl21 = addPanelElement(panelEl19, "span", {"id": "loss-display", "style": "font-weight: bold; color: #ffffff;"});
   panelEl21.appendChild(document.createTextNode("$0.00"));
   const panelEl22 = addPanelElement(panelEl18, "button", {"class": "action-icon-btn", "id": "clear-all-btn", "title": "Clear All Log Entries"});
   const panelEl23 = addPanelElement(panelEl22, "svg", {"viewBox": "0 0 24 24"});
   const panelEl24 = addPanelElement(panelEl23, "path", {"d": "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"});
   const panelEl25 = addPanelElement(panelEl17, "div", {"class": "loss-input-row"});
-  const panelEl26 = addPanelElement(panelEl25, "input", {"type": "number", "id": "loss-adder", "placeholder": "Add loss ($)...", "style": "font-size: 14px; padding: 6px 8px;"});
+  const panelEl26 = addPanelElement(panelEl25, "input", {"type": "number", "id": "loss-adder", "placeholder": "+Profit / -Loss ($)", "step": "any", "aria-label": "Profit or loss in dollars", "style": "font-size: 14px; padding: 6px 8px;"});
+  const recordDirection = addPanelElement(panelEl25, 'select', { 'aria-label': 'Trade direction', style: 'background: #131722; color: #fff; border: 1px solid #2a2e39; border-radius: 4px; font-size: 14px;' });
+  addPanelElement(recordDirection, 'option', { value: 'LONG' }, 'Long');
+  addPanelElement(recordDirection, 'option', { value: 'SHORT' }, 'Short');
   const panelEl27 = addPanelElement(panelEl25, "button", {"class": "inline-add-icon-btn", "id": "add-loss-btn", "title": "Commit Log Entry"});
   const panelEl28 = addPanelElement(panelEl27, "svg", {"viewBox": "0 0 24 24"});
   const panelEl29 = addPanelElement(panelEl28, "path", {"d": "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"});
@@ -171,13 +176,14 @@
   panelEl50.appendChild(document.createTextNode("Stop Loss Price"));
   const panelEl51 = addPanelElement(panelEl49, "input", {"type": "number", "id": "sl-price", "step": "0.00001", "placeholder": "Type SL..."});
   const atrBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
-  const atrLabel = addPanelElement(atrBlock, 'label', { class: 'atr-toggle' });
+  const atrHeader = addPanelElement(atrBlock, 'div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 8px;' });
+  const atrLabel = addPanelElement(atrHeader, 'label', { class: 'atr-toggle', style: 'margin-bottom: 0;' });
   const inputUseATR = addPanelElement(atrLabel, 'input', { type: 'checkbox', id: 'use-atr' });
-  addPanelElement(atrLabel, 'span', {}, 'Use ATR for stop loss price');
+  addPanelElement(atrLabel, 'span', {}, 'Use ATR for Stop');
   const atrControls = addPanelElement(atrBlock, 'div', { hidden: '' });
-  const atrStatus = addPanelElement(atrControls, 'div', { class: 'atr-status', role: 'status', style: 'font-size: 14px;' });
+  const atrStatus = addPanelElement(atrHeader, 'span', { class: 'atr-status', role: 'status', 'aria-label': 'Current ATR', style: 'font-size: 14px; white-space: nowrap; text-align: right;' }, '—');
   const atrMultipliers = addPanelElement(atrControls, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR multiplier' });
-  const atrMultiplierButtons = [1, 1.5, 2].map(multiplier => {
+  const atrMultiplierButtons = [1, 2, 3, 4].map(multiplier => {
     const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': String(multiplier === 1) }, `${multiplier}x`);
     button.addEventListener('click', () => {
       state.atrMultiplier = multiplier;
@@ -185,12 +191,6 @@
     });
     return button;
   });
-  const panelEl52 = addPanelElement(panelEl4, "div", {"style": "margin-bottom: 12px;"});
-  const panelEl53 = addPanelElement(panelEl52, "label", {});
-  panelEl53.appendChild(document.createTextNode("SL Distance "));
-  const panelEl54 = addPanelElement(panelEl53, "span", {"class": "read-only-badge"});
-  panelEl54.appendChild(document.createTextNode("AUTO"));
-  const panelEl55 = addPanelElement(panelEl52, "input", {"type": "text", "id": "sl-distance", "value": "0.00%", "disabled": "", "style": "opacity: 0.7; cursor: not-allowed;"});
   const panelEl56 = addPanelElement(panelEl4, "div", {"class": "output-area"});
   const panelEl57 = addPanelElement(panelEl56, "div", {"class": "output-lbl"});
   panelEl57.appendChild(document.createTextNode("Amount (Tokens / Units)"));
@@ -201,6 +201,9 @@
   panelEl60.appendChild(document.createTextNode("Position Size (Nominal):"));
   const panelEl61 = addPanelElement(panelEl59, "span", {"class": "aux-val", "id": "nominal-display"});
   panelEl61.appendChild(document.createTextNode("$0.00"));
+  const realLeverageRow = addPanelElement(panelEl56, 'div', { class: 'aux-container' });
+  addPanelElement(realLeverageRow, 'span', {}, 'Real Leverage:');
+  const elRealLeverage = addPanelElement(realLeverageRow, 'span', { class: 'aux-val', id: 'real-leverage-display' }, '0.00x');
   const panelEl62 = addPanelElement(panelEl56, "div", {"class": "aux-container"});
   const panelEl63 = addPanelElement(panelEl62, "span", {});
   panelEl63.appendChild(document.createTextNode("Real Margin Used:"));
@@ -216,6 +219,12 @@
   panelEl69.appendChild(document.createTextNode("Stop Loss Money:"));
   const panelEl70 = addPanelElement(panelEl68, "span", {"class": "aux-val-danger", "id": "sl-money-display"});
   panelEl70.appendChild(document.createTextNode("-$0.00"));
+  const feeRow = addPanelElement(panelEl56, 'div', { class: 'aux-container', title: 'Estimated fee per side of the trade: maker 0.02%, taker 0.05%.' });
+  addPanelElement(feeRow, 'span', {}, 'Estimated Fee:');
+  const elEstimatedFee = addPanelElement(feeRow, 'span', { class: 'aux-val-danger', id: 'estimated-fee-display' }, 'M: -$0 · T: -$0');
+  const distanceRow = addPanelElement(panelEl56, 'div', { class: 'aux-container' });
+  addPanelElement(distanceRow, 'span', {}, 'Stop Loss Distance:');
+  addPanelElement(distanceRow, 'span', { class: 'aux-val', id: 'sl-distance' }, '0.00% · 0');
   const panelEl71 = addPanelElement(panelEl56, "button", {"class": "apply-btn", "id": "apply-btn"});
   panelEl71.appendChild(document.createTextNode("Apply Position"));
   const panelEl72 = addPanelElement(panelEl56, "div", {"class": "warning", "id": "warn-banner"});
@@ -276,7 +285,7 @@
     });
   };
 
-  shadowRoot.querySelectorAll('input').forEach(input => {
+  shadowRoot.querySelectorAll('input, select').forEach(input => {
     isolateKeyboardEvents(input);
   });
 
@@ -285,20 +294,32 @@
     btn.addEventListener('mousedown', (e) => e.stopPropagation());
   });
 
+  function normalizeProfitRecords(parsed) {
+    return (Array.isArray(parsed.records) ? parsed.records : [])
+      .filter(record => Number.isFinite(record.val))
+      .map(record => ({ ...record, val: parsed.schema === 3 ? record.val : -Math.abs(record.val) }));
+  }
+
   function recalculateTotalLossFromRecords() {
-    state.currentDailyLossUSD = state.lossRecords.reduce((acc, curr) => acc + curr.val, 0);
+    state.dailyProfitUSD = state.lossRecords.reduce((total, record) => total + record.val, 0);
+    state.currentDailyLossUSD = state.lossRecords.reduce((total, record) => total + Math.max(0, -record.val), 0);
+  }
+
+  function formatProfit(value) {
+    return `${value < 0 ? '-' : value > 0 ? '+' : ''}${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
   function saveRecordsToLocalStorage() {
-    localStorage.setItem('alphasize_daily_metrics_v2', JSON.stringify({
+    localStorage.setItem('alphasize_daily_metrics_v3', JSON.stringify({
       date: getTodayString(),
+      schema: 3,
       records: state.lossRecords
     }));
   }
 
   function renderLossLogsUI() {
-    elLossDisplay.textContent = `$${state.currentDailyLossUSD.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-    elLossDisplay.style.color = state.currentDailyLossUSD > 0 ? '#ff5252' : '#ffffff';
+    elLossDisplay.textContent = formatProfit(state.dailyProfitUSD);
+    elLossDisplay.style.color = state.dailyProfitUSD < 0 ? '#F23645' : '#31BD65';
 
     containerLogList.replaceChildren();
     if (state.lossRecords.length === 0) {
@@ -320,8 +341,16 @@
       assetName.textContent = record.asset || 'UNKNOWN';
       const amount = document.createElement('span');
       amount.className = 'log-val-amount';
-      amount.textContent = `-$${record.val.toFixed(2)}`;
-      primaryRow.append(assetName, amount);
+      amount.textContent = formatProfit(record.val);
+      amount.style.color = record.val < 0 ? '#F23645' : '#31BD65';
+      primaryRow.append(assetName);
+      if (record.direction === 'LONG' || record.direction === 'SHORT') {
+        const direction = document.createElement('span');
+        direction.textContent = record.direction === 'LONG' ? 'Long' : 'Short';
+        direction.style.color = record.direction === 'LONG' ? '#31BD65' : '#F23645';
+        primaryRow.append(direction);
+      }
+      primaryRow.append(amount);
       const time = document.createElement('span');
       time.className = 'log-time-secondary';
       time.textContent = record.time;
@@ -369,9 +398,9 @@
         state.direction = 'LONG';
         state.stopLossPercent = ((state.entryPrice - state.stopLossPrice) / state.entryPrice) * 100;
       }
-      inputSLDistance.value = `${state.stopLossPercent.toFixed(2)}% · ${Number(Math.abs(state.entryPrice - state.stopLossPrice).toPrecision(12))}`;
+      inputSLDistance.textContent = `${state.stopLossPercent.toFixed(2)}% · ${Number(Math.abs(state.entryPrice - state.stopLossPrice).toPrecision(12))}`;
     } else {
-      inputSLDistance.value = '0.00%';
+      inputSLDistance.textContent = '0.00% · 0';
       state.stopLossPercent = 0;
     }
 
@@ -421,6 +450,14 @@
       maximumFractionDigits: 2 
     })}`;
 
+    // Per-side estimates; opening and closing may use different fee rates.
+    const feeNotional = Number.isFinite(nominalSize) && nominalSize > 0 ? nominalSize : 0;
+    const formatFee = fee => '-$' + fee.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    elEstimatedFee.textContent = `M: ${formatFee(feeNotional * 0.0002)} · T: ${formatFee(feeNotional * 0.0005)}`;
+
+    const realLeverage = state.accountEquity > 0 ? nominalSize / state.accountEquity : 0;
+    elRealLeverage.textContent = Number.isFinite(realLeverage) ? `${realLeverage.toFixed(2)}x` : '0.00x';
+
     elMargin.textContent = `$${requiredMargin.toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -439,8 +476,8 @@
   }
 
   function commitClosedLoss() {
-    const lossVal = Math.abs(parseFloat(inputLossAdder.value)) || 0;
-    if (lossVal > 0) {
+    const lossVal = Number(inputLossAdder.value);
+    if (Number.isFinite(lossVal) && lossVal !== 0) {
       const now = new Date();
       const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
       
@@ -448,6 +485,7 @@
         id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11),
         time: timeString,
         val: lossVal,
+        direction: recordDirection.value,
         asset: state.assetName
       });
 
@@ -471,7 +509,7 @@
   }
 
   function masterClearAllLosses() {
-    if (confirm("Are you sure you want to clear all loss records for today?")) {
+    if (confirm("Are you sure you want to clear all profit and loss records for today?")) {
       state.lossRecords = [];
       recalculateTotalLossFromRecords();
       saveRecordsToLocalStorage();
@@ -677,10 +715,10 @@
 
   function updateATRControls() {
     atrControls.hidden = !state.useATR;
-    atrMultiplierButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.atrMultiplier === [1, 1.5, 2][index])));
+    atrMultiplierButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.atrMultiplier === [1, 2, 3, 4][index])));
     atrStatus.textContent = state.atrValue === null
-      ? 'ATR: unavailable'
-      : `ATR: ${state.atrValue}`;
+      ? '—'
+      : String(state.atrValue);
   }
 
   function applyATRStop() {
@@ -718,15 +756,31 @@
     updateATRControls();
   });
 
+  let tradeSession = null;
+  function syncTradeSession(direction, symbol) {
+    if (!direction) {
+      tradeSession = null;
+      return;
+    }
+    const key = symbol + ':' + direction;
+    if (tradeSession === key) return;
+    tradeSession = key;
+    recordDirection.value = direction;
+    state.useATR = true;
+    inputUseATR.checked = true;
+    requestATRStop();
+  }
+
   // --- Scraper Interval Engine ---
   setInterval(() => {
     const currentCheckDate = getTodayString();
     
-    const storageCheck = JSON.parse(localStorage.getItem('alphasize_daily_metrics_v2') || '{}');
+    const storageCheck = JSON.parse(localStorage.getItem('alphasize_daily_metrics_v3') || '{}');
     if (storageCheck.date && storageCheck.date !== currentCheckDate) {
       state.lossRecords = [];
       state.currentDailyLossUSD = 0;
-      localStorage.setItem('alphasize_daily_metrics_v2', JSON.stringify({ date: currentCheckDate, records: [] }));
+      state.dailyProfitUSD = 0;
+      localStorage.setItem('alphasize_daily_metrics_v3', JSON.stringify({ date: currentCheckDate, records: [] }));
       renderLossLogsUI();
     }
 
@@ -818,9 +872,7 @@
 
     observeTicketStop();
     const ticketDirection = readTicketDirection();
-    const directionChanged = state.ticketDirection !== ticketDirection;
     state.ticketDirection = ticketDirection;
-    if (state.useATR && directionChanged) requestATRStop();
 
     const leverage = readTicketLeverage();
     if (leverage !== null) {
@@ -859,11 +911,10 @@
       inputSLPrice.value = autoSLPrice;
     }
 
-    if (state.useATR) {
-      state.atrValue = readChartATR();
-      applyATRStop();
-      updateATRControls();
-    }
+    syncTradeSession(ticketDirection, state.assetName);
+    state.atrValue = readChartATR();
+    if (state.useATR) applyATRStop();
+    updateATRControls();
     calculateRiskSystem();
   }, 500);
 

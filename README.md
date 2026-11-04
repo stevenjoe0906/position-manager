@@ -11,7 +11,7 @@ The extension is designed to make position sizing deliberate and consistent befo
 - Shows stop-loss distance, nominal position size, required margin, and projected stop-loss amount
 - Reads the current symbol, market price, account equity, limit or stop entry price, and stop-loss price from TradingView when available
 - Applies the calculated quantity to TradingView's quantity field
-- Records realized losses for the current day in browser local storage
+- Records signed realized profit/loss and trade direction for the current day in browser local storage
 - Enforces a configurable maximum daily drawdown
 - Disables position application when:
   - the daily loss limit has been reached, or
@@ -77,26 +77,30 @@ The extension does not submit an order. Review every value in TradingView before
 
 ## ATR stop loss
 
-Add one ATR indicator to the active TradingView chart and keep its legend value visible. Enable **Use ATR for stop loss price**, then select **1x**, **1.5x**, or **2x** (default: 1x). The current ATR appears above the buttons.
+Add one ATR indicator to the active TradingView chart and keep its legend value visible. ATR mode enables automatically when the order ticket opens or its symbol/direction changes. Select **1x**, **2x**, **3x**, or **4x** (default: 1x). The header shows **Use ATR for Stop** on the left and the current ATR value on the right, including when ATR mode is off.
 
 - Direction comes from the active Buy/Sell control in TradingView's order ticket. Buy subtracts ATR distance from entry; Sell adds it. No calculation is made when direction cannot be detected.
 - Choosing an ATR option fills the order ticket's stop-loss price and enables its stop-loss switch if needed. Changing entry or the page's Buy/Sell direction also recalculates and fills the stop while ATR mode is enabled.
 - Live ATR changes update the displayed ATR without moving the stop. Click the selected multiplier again to apply the latest displayed value.
 - Editing the stop manually in either the panel or the order ticket unchecks ATR mode. Panel edits are copied to the ticket; ticket edits update the panel and position sizing.
-- SL Distance shows both percentage and absolute price distance.
+- **Stop Loss Distance** appears in the summary as percentage and absolute price distance.
 - Leverage is read automatically from the order ticket's leverage button when available; manual entry remains available when detection fails.
 - The reader uses the displayed legend value, which can follow the crosshair over historical candles. Move the pointer off historical candles before applying ATR.
 - Missing or ambiguous ATR data clears a requested calculation while waiting for a valid value. Multiple charts require a detectable active chart, and multiple ATR studies are unsupported.
 - Stop-loss writing expects the ticket field to be in absolute-price mode, as shown by its price value. Review the ticket's field mode and resulting value.
 - **Apply Position** copies position quantity. ATR controls fill the stop-loss field, but the extension never submits an order.
 
-## Daily-loss tracking
+## Daily Profit
 
-Enter each realized loss in the **Daily Loss** section. Records include the current symbol and time and are stored locally in the browser. They reset automatically when the local calendar date changes.
+Enter positive amounts for profits and negative amounts for losses, and select Long or Short for each record. The direction defaults to the detected ticket direction at the start of a new setup and can be changed independently for logging a completed trade.
 
-When recorded daily losses reach the configured maximum drawdown, the extension sets the position quantity to zero and disables **Apply Position**.
+The total is net realized profit: negative totals use red (#F23645); zero or positive totals use green (#31BD65). Each record shows its signed amount, symbol, direction (when recorded), and time. Existing loss-only records migrate as negative amounts; their unknown historical direction is left unspecified.
 
-You can remove an individual record or clear all records for the current day.
+Records persist locally and reset on the next polling cycle after the local calendar date changes. Individual entries can be removed or all records cleared.
+
+The existing maximum daily-loss limit still counts the sum of losing entries. Profitable entries change the displayed net profit but do not offset losses for this limit.
+
+ATR auto-enable detects the visible ticket opening/reopening or a change of symbol/direction. It does not detect a submitted trade that leaves the same ticket continuously open. Manual stop edits keep ATR off within the same setup.
 
 ## Privacy
 
