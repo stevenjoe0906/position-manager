@@ -36,6 +36,7 @@
     atrMultiplier: 1,
     atrValue: null,
     atrPending: false,
+    ticketDirection: null,
     dailyLossLimitPercent: 3, 
     currentDailyLossUSD: 0,
     lossRecords: [] 
@@ -87,7 +88,7 @@
     .atr-toggle { text-transform: none; display: flex; align-items: center; gap: 8px; }
     .atr-toggle input { width: auto; }
     .atr-options { display: flex; gap: 6px; margin: 8px 0; }
-    .atr-options button { flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
+    .atr-options button { font-size: 16px; font-weight: 600; flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
     .atr-options button[aria-pressed="true"] { border-color: #2962ff; background: #2962ff33; color: #fff; }
     .atr-status { font-size: 12px; color: #b2b5be; line-height: 1.4; }
   `;
@@ -173,26 +174,16 @@
   const inputUseATR = addPanelElement(atrLabel, 'input', { type: 'checkbox', id: 'use-atr' });
   addPanelElement(atrLabel, 'span', {}, 'Use ATR for stop loss price');
   const atrControls = addPanelElement(atrBlock, 'div', { hidden: '' });
-  const atrSides = addPanelElement(atrControls, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR stop direction' });
-  const atrSideButtons = ['LONG', 'SHORT'].map(side => {
-    const button = addPanelElement(atrSides, 'button', { type: 'button', 'aria-pressed': String(side === state.direction) }, side === 'LONG' ? 'Long' : 'Short');
-    button.addEventListener('click', () => {
-      state.direction = side;
-      requestATRStop();
-    });
-    return button;
-  });
+  const atrStatus = addPanelElement(atrControls, 'div', { class: 'atr-status', role: 'status', style: 'font-size: 14px;' });
   const atrMultipliers = addPanelElement(atrControls, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR multiplier' });
   const atrMultiplierButtons = [1, 1.5, 2].map(multiplier => {
-    const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': String(multiplier === 1) }, `${multiplier}× ATR`);
+    const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': String(multiplier === 1) }, `${multiplier}x`);
     button.addEventListener('click', () => {
       state.atrMultiplier = multiplier;
       requestATRStop();
     });
     return button;
   });
-  const atrStatus = addPanelElement(atrControls, 'div', { class: 'atr-status', role: 'status' });
-  addPanelElement(atrControls, 'div', { class: 'atr-status' }, 'Manual edits stay until entry, direction, or multiplier changes.');
   const panelEl52 = addPanelElement(panelEl4, "div", {"style": "margin-bottom: 12px;"});
   const panelEl53 = addPanelElement(panelEl52, "label", {});
   panelEl53.appendChild(document.createTextNode("SL Distance "));
@@ -373,7 +364,7 @@
         elDirection.className = 'direction-badge visible dir-long';
         state.stopLossPercent = ((state.entryPrice - state.stopLossPrice) / state.entryPrice) * 100;
       }
-      inputSLDistance.value = `${state.stopLossPercent.toFixed(2)}%`;
+      inputSLDistance.value = `${state.stopLossPercent.toFixed(2)}% · ${Number(Math.abs(state.entryPrice - state.stopLossPrice).toPrecision(12))}`;
     } else {
       elDirection.classList.remove('visible'); 
       inputSLDistance.value = '0.00%';
@@ -530,9 +521,9 @@
 
   inputSLPrice.addEventListener('input', (e) => {
     state.stopLossPrice = Number(e.target.value);
-    state.atrPending = false;
+    disableATR();
+    queueTicketStop(state.stopLossPrice);
     calculateRiskSystem();
-    updateATRControls();
   });
 
   // Explicit Manual Injection Event Listener
@@ -559,6 +550,70 @@
     if (!text) return 0;
     return parseFloat(text.replace(/[^0-9.-]/g, '')) || 0;
   }
+
+  const ticketStopSelector = 'input[data-qa-id~="order-ticket-stop-loss-input"]';
+  let writingTicketStop = false;
+  let pendingTicketStop = null;
+
+  function readTicketDirection() {
+    const sides = ['buy', 'sell'].filter(side =>
+      Array.from(document.querySelectorAll('[data-name="side-control-' + side + '"]')).some(el =>
+        el.getClientRects().length && Array.from(el.classList).some(name => name === 'active' || name.startsWith('active-'))
+      )
+    );
+    return sides.length === 1 ? (sides[0] === 'buy' ? 'LONG' : 'SHORT') : null;
+  }
+
+  function readTicketLeverage() {
+    const buttons = Array.from(document.querySelectorAll('[data-qa-id="leverage-button"]')).filter(el => el.getClientRects().length);
+    if (buttons.length !== 1) return null;
+    const match = buttons[0].textContent.trim().match(/^(\d+(?:\.\d+)?)\s*[x×]$/i);
+    const value = match ? Number(match[1]) : 0;
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  function disableATR() {
+    state.useATR = false;
+    state.atrPending = false;
+    inputUseATR.checked = false;
+    pendingTicketStop = null;
+    updateATRControls();
+  }
+
+  function queueTicketStop(value) {
+    pendingTicketStop = Number.isFinite(value) && value > 0 ? { value, attempts: 0 } : null;
+    flushTicketStop();
+  }
+
+  function flushTicketStop() {
+    if (!pendingTicketStop) return;
+    if (++pendingTicketStop.attempts > 10) {
+      pendingTicketStop = null;
+      console.warn('Could not fill TradingView stop loss. Check the order ticket.');
+      return;
+    }
+    writingTicketStop = true;
+    try {
+      const toggle = document.querySelector('input[data-qa-id="order-ticket-stop-loss-checkbox-bracket"]');
+      if (toggle && !toggle.checked) toggle.click();
+      // Enabling the switch can mount the input on a subsequent render.
+      const input = document.querySelector(ticketStopSelector);
+      if (!input || input.disabled || (toggle && !toggle.checked)) return;
+      setNativeInputValue(input, String(pendingTicketStop.value));
+      pendingTicketStop = null;
+    } finally {
+      writingTicketStop = false;
+    }
+  }
+
+  // A user edit in TradingView cancels ATR, including any delayed write.
+  document.addEventListener('input', event => {
+    if (writingTicketStop || !event.target.matches?.(ticketStopSelector)) return;
+    disableATR();
+    state.stopLossPrice = cleanAndParseFloat(event.target.value);
+    inputSLPrice.value = state.stopLossPrice || '';
+    calculateRiskSystem();
+  });
 
   // Read only a named ATR study's value, never its length/settings or another indicator.
   // TradingView's legend follows the crosshair, so this is the displayed value.
@@ -598,16 +653,16 @@
 
   function updateATRControls() {
     atrControls.hidden = !state.useATR;
-    atrSideButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.direction === ['LONG', 'SHORT'][index])));
     atrMultiplierButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.atrMultiplier === [1, 1.5, 2][index])));
     atrStatus.textContent = state.atrValue === null
-      ? 'ATR unavailable. Show one ATR indicator with its value on the active chart, or enter a stop manually.'
-      : `Displayed ATR: ${state.atrValue} · Distance: ${Number((state.atrValue * state.atrMultiplier).toPrecision(12))}`;
+      ? 'ATR: unavailable'
+      : `ATR: ${state.atrValue}`;
   }
 
   function applyATRStop() {
     if (!state.useATR || !state.atrPending || state.atrValue === null) return;
-    if (shadowRoot.activeElement === inputSLPrice) return;
+    if (shadowRoot.activeElement === inputSLPrice || !state.ticketDirection) return;
+    state.direction = state.ticketDirection;
     const stop = state.entryPrice + (state.direction === 'SHORT' ? 1 : -1) * state.atrMultiplier * state.atrValue;
     state.stopLossPrice = state.entryPrice > 0 && Number.isFinite(stop) && stop > 0
       ? Number(stop.toPrecision(12)) : 0;
@@ -615,9 +670,12 @@
     if (state.stopLossPrice === state.entryPrice) state.stopLossPrice = 0;
     inputSLPrice.value = state.stopLossPrice || '';
     state.atrPending = false;
+    queueTicketStop(state.stopLossPrice);
   }
 
   function requestATRStop() {
+    pendingTicketStop = null;
+    state.ticketDirection = readTicketDirection();
     state.atrValue = readChartATR();
     state.atrPending = true;
     // Do not keep sizing from a previous entry's stop while waiting for ATR.
@@ -631,6 +689,7 @@
   inputUseATR.addEventListener('change', () => {
     state.useATR = inputUseATR.checked;
     state.atrPending = false;
+    pendingTicketStop = null;
     if (state.useATR) requestATRStop();
     updateATRControls();
   });
@@ -737,6 +796,20 @@
       }
     }
 
+    const ticketDirection = readTicketDirection();
+    const directionChanged = state.ticketDirection !== ticketDirection;
+    state.ticketDirection = ticketDirection;
+    if (state.useATR && directionChanged) requestATRStop();
+
+    const leverage = readTicketLeverage();
+    if (leverage !== null) {
+      state.leverage = leverage;
+      if (shadowRoot.activeElement !== shadowRoot.getElementById('lev')) {
+        shadowRoot.getElementById('lev').value = leverage;
+      }
+    }
+    flushTicketStop();
+
     // 4. Entry / Stop-Loss Price Automation
     // data-qa-id contains space-separated tokens, so use ~= instead of an exact match.
     const entryInputDom = document.querySelector(
@@ -747,7 +820,7 @@
       autoEntryPrice = cleanAndParseFloat(entryInputDom.value);
     }
 
-    const slInputDom = document.querySelector('[data-qa-id*="order-ticket-stop-loss-input"]');
+    const slInputDom = document.querySelector(ticketStopSelector);
     let autoSLPrice = 0;
     if (slInputDom) {
       autoSLPrice = cleanAndParseFloat(slInputDom.value);
@@ -760,7 +833,7 @@
       if (state.useATR && entryChanged) requestATRStop();
     }
 
-    if (!state.useATR && autoSLPrice > 0 && shadowRoot.activeElement !== inputSLPrice) {
+    if (!state.useATR && !pendingTicketStop && autoSLPrice > 0 && shadowRoot.activeElement !== inputSLPrice) {
       state.stopLossPrice = autoSLPrice;
       inputSLPrice.value = autoSLPrice;
     }
