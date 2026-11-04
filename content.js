@@ -191,9 +191,6 @@
     return button;
   });
   const panelEl56 = addPanelElement(panelEl4, "div", {"class": "output-area"});
-  const distanceRow = addPanelElement(panelEl56, 'div', { class: 'aux-container' });
-  addPanelElement(distanceRow, 'span', {}, 'Stop Loss Distance:');
-  addPanelElement(distanceRow, 'span', { class: 'aux-val', id: 'sl-distance' }, '0.00% · 0');
   const panelEl57 = addPanelElement(panelEl56, "div", {"class": "output-lbl"});
   panelEl57.appendChild(document.createTextNode("Amount (Tokens / Units)"));
   const panelEl58 = addPanelElement(panelEl56, "div", {"class": "output-val", "id": "amount-display"});
@@ -203,6 +200,9 @@
   panelEl60.appendChild(document.createTextNode("Position Size (Nominal):"));
   const panelEl61 = addPanelElement(panelEl59, "span", {"class": "aux-val", "id": "nominal-display"});
   panelEl61.appendChild(document.createTextNode("$0.00"));
+  const realLeverageRow = addPanelElement(panelEl56, 'div', { class: 'aux-container' });
+  addPanelElement(realLeverageRow, 'span', {}, 'Real Leverage:');
+  const elRealLeverage = addPanelElement(realLeverageRow, 'span', { class: 'aux-val', id: 'real-leverage-display' }, '0.00x');
   const panelEl62 = addPanelElement(panelEl56, "div", {"class": "aux-container"});
   const panelEl63 = addPanelElement(panelEl62, "span", {});
   panelEl63.appendChild(document.createTextNode("Real Margin Used:"));
@@ -218,6 +218,9 @@
   panelEl69.appendChild(document.createTextNode("Stop Loss Money:"));
   const panelEl70 = addPanelElement(panelEl68, "span", {"class": "aux-val-danger", "id": "sl-money-display"});
   panelEl70.appendChild(document.createTextNode("-$0.00"));
+  const distanceRow = addPanelElement(panelEl56, 'div', { class: 'aux-container' });
+  addPanelElement(distanceRow, 'span', {}, 'Stop Loss Distance:');
+  addPanelElement(distanceRow, 'span', { class: 'aux-val', id: 'sl-distance' }, '0.00% · 0');
   const panelEl71 = addPanelElement(panelEl56, "button", {"class": "apply-btn", "id": "apply-btn"});
   panelEl71.appendChild(document.createTextNode("Apply Position"));
   const panelEl72 = addPanelElement(panelEl56, "div", {"class": "warning", "id": "warn-banner"});
@@ -442,6 +445,9 @@
       minimumFractionDigits: 2, 
       maximumFractionDigits: 2 
     })}`;
+
+    const realLeverage = state.accountEquity > 0 ? nominalSize / state.accountEquity : 0;
+    elRealLeverage.textContent = Number.isFinite(realLeverage) ? `${realLeverage.toFixed(2)}x` : '0.00x';
 
     elMargin.textContent = `$${requiredMargin.toLocaleString(undefined, {
       minimumFractionDigits: 2,
