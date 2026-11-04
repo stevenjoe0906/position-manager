@@ -14,7 +14,7 @@ function setup() {
   return context;
 }
 test('all multipliers and both directions', () => {
-  for (const direction of ['LONG', 'SHORT']) for (const multiplier of [1, 1.5, 2]) {
+  for (const direction of ['LONG', 'SHORT']) for (const multiplier of [1, 2, 3, 4]) {
     const c = setup(); c.state.direction = direction; c.state.ticketDirection = direction; c.state.atrMultiplier = multiplier;
     c.applyATRStop();
     assert.equal(c.state.stopLossPrice, 1000 + (direction === 'LONG' ? -1 : 1) * multiplier * 10);
