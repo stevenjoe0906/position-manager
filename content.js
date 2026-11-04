@@ -176,13 +176,14 @@
   panelEl50.appendChild(document.createTextNode("Stop Loss Price"));
   const panelEl51 = addPanelElement(panelEl49, "input", {"type": "number", "id": "sl-price", "step": "0.00001", "placeholder": "Type SL..."});
   const atrBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
-  const atrLabel = addPanelElement(atrBlock, 'label', { class: 'atr-toggle' });
+  const atrHeader = addPanelElement(atrBlock, 'div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 8px;' });
+  const atrLabel = addPanelElement(atrHeader, 'label', { class: 'atr-toggle', style: 'margin-bottom: 0;' });
   const inputUseATR = addPanelElement(atrLabel, 'input', { type: 'checkbox', id: 'use-atr' });
-  addPanelElement(atrLabel, 'span', {}, 'Use ATR for stop loss price');
+  addPanelElement(atrLabel, 'span', {}, 'Use ATR for Stop');
   const atrControls = addPanelElement(atrBlock, 'div', { hidden: '' });
-  const atrStatus = addPanelElement(atrControls, 'div', { class: 'atr-status', role: 'status', style: 'font-size: 14px;' });
+  const atrStatus = addPanelElement(atrHeader, 'span', { class: 'atr-status', role: 'status', 'aria-label': 'Current ATR', style: 'font-size: 14px; white-space: nowrap; text-align: right;' }, '—');
   const atrMultipliers = addPanelElement(atrControls, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR multiplier' });
-  const atrMultiplierButtons = [1, 1.5, 2].map(multiplier => {
+  const atrMultiplierButtons = [1, 2, 3, 4].map(multiplier => {
     const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': String(multiplier === 1) }, `${multiplier}x`);
     button.addEventListener('click', () => {
       state.atrMultiplier = multiplier;
@@ -706,10 +707,10 @@
 
   function updateATRControls() {
     atrControls.hidden = !state.useATR;
-    atrMultiplierButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.atrMultiplier === [1, 1.5, 2][index])));
+    atrMultiplierButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.atrMultiplier === [1, 2, 3, 4][index])));
     atrStatus.textContent = state.atrValue === null
-      ? 'ATR: unavailable'
-      : `ATR: ${state.atrValue}`;
+      ? '—'
+      : String(state.atrValue);
   }
 
   function applyATRStop() {
@@ -903,11 +904,9 @@
     }
 
     syncTradeSession(ticketDirection, state.assetName);
-    if (state.useATR) {
-      state.atrValue = readChartATR();
-      applyATRStop();
-      updateATRControls();
-    }
+    state.atrValue = readChartATR();
+    if (state.useATR) applyATRStop();
+    updateATRControls();
     calculateRiskSystem();
   }, 500);
 
