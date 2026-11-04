@@ -77,7 +77,7 @@ The extension does not submit an order. Review every value in TradingView before
 
 ## ATR stop loss
 
-Add one ATR indicator to the active TradingView chart and keep its legend value visible. ATR mode enables automatically when the order ticket opens or its symbol/direction changes. Select **1x**, **1.5x**, or **2x** (default: 1x). The current ATR appears above the buttons.
+Add one ATR indicator to the active TradingView chart and keep its legend value visible. ATR mode enables automatically when the order ticket opens or its symbol/direction changes. Select **1x**, **2x**, **3x**, or **4x** (default: 1x). The header shows **Use ATR for Stop** on the left and the current ATR value on the right, including when ATR mode is off.
 
 - Direction comes from the active Buy/Sell control in TradingView's order ticket. Buy subtracts ATR distance from entry; Sell adds it. No calculation is made when direction cannot be detected.
 - Choosing an ATR option fills the order ticket's stop-loss price and enables its stop-loss switch if needed. Changing entry or the page's Buy/Sell direction also recalculates and fills the stop while ATR mode is enabled.
