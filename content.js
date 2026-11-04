@@ -219,7 +219,7 @@
   panelEl69.appendChild(document.createTextNode("Stop Loss Money:"));
   const panelEl70 = addPanelElement(panelEl68, "span", {"class": "aux-val-danger", "id": "sl-money-display"});
   panelEl70.appendChild(document.createTextNode("-$0.00"));
-  const feeRow = addPanelElement(panelEl56, 'div', { class: 'aux-container', title: 'Estimated opening + closing fees, assuming the same nominal size and fee rate on both sides.' });
+  const feeRow = addPanelElement(panelEl56, 'div', { class: 'aux-container', title: 'Estimated fee per side of the trade: maker 0.02%, taker 0.05%.' });
   addPanelElement(feeRow, 'span', {}, 'Estimated Fee:');
   const elEstimatedFee = addPanelElement(feeRow, 'span', { class: 'aux-val-danger', id: 'estimated-fee-display' }, 'M: -$0 · T: -$0');
   const distanceRow = addPanelElement(panelEl56, 'div', { class: 'aux-container' });
@@ -450,10 +450,10 @@
       maximumFractionDigits: 2 
     })}`;
 
-    // Round-trip estimate: opening and closing at the same notional and rate.
+    // Per-side estimates; opening and closing may use different fee rates.
     const feeNotional = Number.isFinite(nominalSize) && nominalSize > 0 ? nominalSize : 0;
     const formatFee = fee => '-$' + fee.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    elEstimatedFee.textContent = `M: ${formatFee(feeNotional * 0.0002 * 2)} · T: ${formatFee(feeNotional * 0.0005 * 2)}`;
+    elEstimatedFee.textContent = `M: ${formatFee(feeNotional * 0.0002)} · T: ${formatFee(feeNotional * 0.0005)}`;
 
     const realLeverage = state.accountEquity > 0 ? nominalSize / state.accountEquity : 0;
     elRealLeverage.textContent = Number.isFinite(realLeverage) ? `${realLeverage.toFixed(2)}x` : '0.00x';
