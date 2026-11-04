@@ -568,14 +568,27 @@
     if (charts.length > 1 && active.length !== 1) return null;
     const scope = active[0] || charts[0] || document;
     const rows = scope.querySelectorAll('[data-name="legend-source-item"]');
-    const values = [];
+    const plotsToRead = new Set();
+    // Current TradingView markup labels the plot itself, without requiring
+    // a legend-source-item/title ancestor. Match the stable attribute, not
+    // the generated class suffix (for example valueValue-quatTGAC).
+    for (const item of scope.querySelectorAll('[data-test-id-value-title="ATR"]')) {
+      if (!item.getClientRects().length) continue;
+      const plots = item.querySelectorAll('[class*="valueValue-"]');
+      if (plots.length === 1) plotsToRead.add(plots[0]);
+    }
     for (const row of rows) {
       if (!row.getClientRects().length) continue;
       const title = row.querySelector('[data-name="legend-source-title"]');
       if (!title || !/^(ATR|Average True Range)(?:$|\s|\()/i.test(title.textContent.trim())) continue;
       const plots = row.querySelectorAll('[data-name="legend-source-value"], [class*="valueValue-"]');
       if (plots.length !== 1) continue;
-      const text = plots[0].textContent.trim().replace(/[\u200e\u200f\u2212]/g, c => c === '\u2212' ? '-' : '').replace(/,/g, '');
+      plotsToRead.add(plots[0]);
+    }
+    const values = [];
+    for (const plot of plotsToRead) {
+      if (!plot.getClientRects().length) continue;
+      const text = plot.textContent.trim().replace(/[\u200e\u200f\u2212]/g, c => c === '\u2212' ? '-' : '').replace(/,/g, '');
       if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(text)) continue;
       const value = Number(text);
       if (Number.isFinite(value) && value > 0) values.push(value);
