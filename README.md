@@ -75,6 +75,20 @@ Firefox removes temporary extensions when the browser closes, so you must load i
 
 The extension does not submit an order. Review every value in TradingView before placing the trade.
 
+## ATR stop loss
+
+Add one ATR indicator to the active TradingView chart and keep its legend value visible. Enable **Use ATR for stop loss price**, choose **Long** or **Short**, and select **1× ATR**, **1.5× ATR**, or **2× ATR**. The default multiplier is 1×; ATR mode is initially off.
+
+- Long: entry − multiplier × ATR.
+- Short: entry + multiplier × ATR.
+- Changing the entry (in the panel or the detected order-ticket field), direction, or multiplier recalculates the stop.
+- You can edit the stop manually at any time. Polling and live ATR changes leave your stop untouched until the next entry/direction/multiplier change. Clicking the selected multiplier reapplies the displayed ATR.
+- While ATR mode is enabled, the order ticket's stop field does not overwrite the panel's stop. Turning ATR mode off restores the existing order-ticket synchronization.
+- Missing or ambiguous ATR data shows an unavailable message. A requested calculation clears the old stop while waiting for a readable ATR; manually entering a stop cancels that pending calculation.
+- This reads the **displayed legend value**, which may correspond to a historical candle under the crosshair. Move the pointer off historical candles before applying ATR.
+- DOM extraction is best-effort and requires live verification against your TradingView layout. Multiple charts require a detectable active chart; multiple ATR studies are not supported.
+- Only position quantity is copied by **Apply Position**. Copy your chosen stop to TradingView separately; the extension does not submit orders.
+
 ## Daily-loss tracking
 
 Enter each realized loss in the **Daily Loss** section. Records include the current symbol and time and are stored locally in the browser. They reset automatically when the local calendar date changes.
@@ -115,6 +129,8 @@ https://*.tradingview.com/*
 ## Development
 
 There is no build step or package dependency. Edit `content.js`, reload the unpacked extension from your browser's extension page, and refresh TradingView to test changes.
+
+Run the dependency-free ATR unit tests with `node --test tests/atr.test.cjs` and check syntax with `node --check content.js`. These tests use DOM fixtures, not a live TradingView page.
 
 ## Disclaimer
 
