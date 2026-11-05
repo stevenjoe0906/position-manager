@@ -98,6 +98,24 @@
     .atr-options button { font-size: 16px; font-weight: 600; flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
     .atr-options button[aria-pressed="true"] { border-color: #2962ff; background: #2962ff33; color: #fff; }
     .atr-status { font-size: 12px; color: #b2b5be; line-height: 1.4; }
+    .result-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin: 12px 0 8px; }
+    .result-card { min-width: 0; background: #1c2434; border: 1px solid #30384a; border-radius: 7px; padding: 11px 10px; }
+    .result-card-label { color: #9299aa; font-size: 11px; font-weight: 600; margin-bottom: 7px; }
+    .result-card-value { color: #f4f6fb; font-size: 18px; font-weight: 750; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .result-card-value.risk { color: #ff5252; }
+    .result-card-subtitle { margin-top: 5px; color: #9299aa; font-size: 11px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .fee-card { background: #1c2434; border: 1px solid #30384a; border-radius: 7px; padding: 10px 11px; margin-bottom: 8px; }
+    .fee-card-heading { display: flex; justify-content: space-between; gap: 8px; align-items: center; color: #9299aa; font-size: 11px; font-weight: 600; }
+    .fee-card-rates { color: #9299aa; font-size: 10px; font-weight: normal; white-space: nowrap; }
+    .fee-values { margin-top: 7px; font-size: 15px; color: #ff5252; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .position-details { border-top: 1px solid #30384a; margin-top: 7px; }
+    .position-details summary { list-style: none; display: flex; justify-content: space-between; align-items: center; padding: 12px 0; color: #a5adbd; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .position-details summary::-webkit-details-marker { display: none; }
+    .position-details summary::after { content: '⌄'; font-size: 17px; line-height: 10px; transition: transform 0.15s; }
+    .position-details[open] summary::after { transform: rotate(180deg); }
+    .position-details .aux-container { margin-bottom: 9px; gap: 8px; }
+    .position-details .aux-container span:last-child { text-align: right; }
+    .output-area .apply-btn { margin-top: 6px; }
   `;
   shadowRoot.appendChild(panelStyle);
 
@@ -196,35 +214,30 @@
   panelEl57.appendChild(document.createTextNode("Amount (Tokens / Units)"));
   const panelEl58 = addPanelElement(panelEl56, "div", {"class": "output-val", "id": "amount-display"});
   panelEl58.appendChild(document.createTextNode("0.00"));
-  const panelEl59 = addPanelElement(panelEl56, "div", {"class": "aux-container", "style": "margin-top: 10px;"});
-  const panelEl60 = addPanelElement(panelEl59, "span", {});
-  panelEl60.appendChild(document.createTextNode("Position Size (Nominal):"));
-  const panelEl61 = addPanelElement(panelEl59, "span", {"class": "aux-val", "id": "nominal-display"});
-  panelEl61.appendChild(document.createTextNode("$0.00"));
-  const realLeverageRow = addPanelElement(panelEl56, 'div', { class: 'aux-container' });
-  addPanelElement(realLeverageRow, 'span', {}, 'Real Leverage:');
-  const elRealLeverage = addPanelElement(realLeverageRow, 'span', { class: 'aux-val', id: 'real-leverage-display' }, '0.00x');
-  const panelEl62 = addPanelElement(panelEl56, "div", {"class": "aux-container"});
-  const panelEl63 = addPanelElement(panelEl62, "span", {});
-  panelEl63.appendChild(document.createTextNode("Real Margin Used:"));
-  const panelEl64 = addPanelElement(panelEl62, "span", {"class": "aux-val", "id": "margin-display", "style": "font-weight: bold; color: #ffffff;"});
-  panelEl64.appendChild(document.createTextNode("$0.00"));
-  const panelEl65 = addPanelElement(panelEl56, "div", {"class": "aux-container"});
-  const panelEl66 = addPanelElement(panelEl65, "span", {});
-  panelEl66.appendChild(document.createTextNode("Max DD Loss Money:"));
-  const panelEl67 = addPanelElement(panelEl65, "span", {"class": "aux-val-danger", "id": "max-dd-money-display"});
-  panelEl67.appendChild(document.createTextNode("-$0.00"));
-  const panelEl68 = addPanelElement(panelEl56, "div", {"class": "aux-container"});
-  const panelEl69 = addPanelElement(panelEl68, "span", {});
-  panelEl69.appendChild(document.createTextNode("Stop Loss Money:"));
-  const panelEl70 = addPanelElement(panelEl68, "span", {"class": "aux-val-danger", "id": "sl-money-display"});
-  panelEl70.appendChild(document.createTextNode("-$0.00"));
-  const feeRow = addPanelElement(panelEl56, 'div', { class: 'aux-container', title: 'Estimated fee per side of the trade: maker 0.02%, taker 0.05%.' });
-  addPanelElement(feeRow, 'span', {}, 'Estimated Fee:');
-  const elEstimatedFee = addPanelElement(feeRow, 'span', { class: 'aux-val-danger', id: 'estimated-fee-display' }, 'M: -$0 · T: -$0');
-  const distanceRow = addPanelElement(panelEl56, 'div', { class: 'aux-container' });
-  addPanelElement(distanceRow, 'span', {}, 'Stop Loss Distance:');
-  addPanelElement(distanceRow, 'span', { class: 'aux-val', id: 'sl-distance' }, '0.00% · 0');
+  const resultCards = addPanelElement(panelEl56, 'div', { class: 'result-cards' });
+  const riskCard = addPanelElement(resultCards, 'div', { class: 'result-card' });
+  addPanelElement(riskCard, 'div', { class: 'result-card-label' }, 'Stop Loss');
+  addPanelElement(riskCard, 'div', { class: 'result-card-value risk', id: 'sl-money-display' }, '-$0.00');
+  addPanelElement(riskCard, 'div', { class: 'result-card-subtitle', id: 'sl-distance' }, '0.00% · 0');
+  const marginCard = addPanelElement(resultCards, 'div', { class: 'result-card' });
+  addPanelElement(marginCard, 'div', { class: 'result-card-label' }, 'Margin Required');
+  addPanelElement(marginCard, 'div', { class: 'result-card-value', id: 'margin-display' }, '$0.00');
+  const leverageSubtitle = addPanelElement(marginCard, 'div', { class: 'result-card-subtitle' });
+  const elRealLeverage = addPanelElement(leverageSubtitle, 'span', { id: 'real-leverage-display' }, '0.00x');
+  leverageSubtitle.appendChild(document.createTextNode(' leverage'));
+  const feeCard = addPanelElement(panelEl56, 'div', { class: 'fee-card', title: 'Estimated fee per side: maker 0.02%, taker 0.05%. Actual fees depend on execution.' });
+  const feeHeading = addPanelElement(feeCard, 'div', { class: 'fee-card-heading' });
+  addPanelElement(feeHeading, 'span', {}, 'Estimated Fees');
+  addPanelElement(feeHeading, 'span', { class: 'fee-card-rates' }, 'M / T · 0.02% / 0.05%');
+  const elEstimatedFee = addPanelElement(feeCard, 'div', { class: 'fee-values', id: 'estimated-fee-display' }, 'M: -$0 · T: -$0');
+  const details = addPanelElement(panelEl56, 'details', { class: 'position-details' });
+  addPanelElement(details, 'summary', {}, 'Position Details');
+  const nominalRow = addPanelElement(details, 'div', { class: 'aux-container' });
+  addPanelElement(nominalRow, 'span', {}, 'Nominal Position Size:');
+  addPanelElement(nominalRow, 'span', { class: 'aux-val', id: 'nominal-display' }, '$0.00');
+  const maxDDRow = addPanelElement(details, 'div', { class: 'aux-container' });
+  addPanelElement(maxDDRow, 'span', {}, 'Max DD Loss Money:');
+  addPanelElement(maxDDRow, 'span', { class: 'aux-val-danger', id: 'max-dd-money-display' }, '-$0.00');
   const panelEl71 = addPanelElement(panelEl56, "button", {"class": "apply-btn", "id": "apply-btn"});
   panelEl71.appendChild(document.createTextNode("Apply Position"));
   const panelEl72 = addPanelElement(panelEl56, "div", {"class": "warning", "id": "warn-banner"});
