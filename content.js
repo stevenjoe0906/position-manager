@@ -103,13 +103,11 @@
     .result-card-label { color: #9299aa; font-size: 11px; font-weight: 600; margin-bottom: 7px; }
     .result-card-value { color: #f4f6fb; font-size: 18px; font-weight: 750; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
     .result-card-value.risk { color: #ff5252; }
-    .result-card-subtitle { margin-top: 5px; color: #9299aa; font-size: 11px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-    .result-card-subtitle .metric-label { display: block; margin-bottom: 2px; }
+    .result-card-subtitle { margin-top: 6px; color: #9299aa; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
     .fee-card { background: #1c2434; border: 1px solid #30384a; border-radius: 12px; padding: 13px 11px; margin-bottom: 8px; }
     .fee-card-heading { display: flex; justify-content: space-between; gap: 8px; align-items: center; color: #d1d4dc; font-size: 13px; font-weight: 500; }
     .fee-card-badge { background: #343d4f; border-radius: 16px; padding: 3px 9px; color: #d1d4dc; font-size: 12px; white-space: nowrap; }
     .fee-card-bottom { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-    .fee-card-rates { color: #b2b5be; font-size: 11px; font-weight: normal; white-space: nowrap; }
     .fee-values { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .fee-maker { color: #ff6b9d; }
     .fee-taker { color: #ff5252; }
@@ -225,24 +223,21 @@
   addPanelElement(riskCard, 'div', { class: 'result-card-label' }, 'Stop Loss');
   addPanelElement(riskCard, 'div', { class: 'result-card-value risk', id: 'sl-money-display' }, '-$0.00');
   const distanceSubtitle = addPanelElement(riskCard, 'div', { class: 'result-card-subtitle' });
-  addPanelElement(distanceSubtitle, 'span', { class: 'metric-label' }, 'Stop Loss Distance');
   addPanelElement(distanceSubtitle, 'span', { id: 'sl-distance' }, '0.00% · 0');
   const marginCard = addPanelElement(resultCards, 'div', { class: 'result-card' });
   addPanelElement(marginCard, 'div', { class: 'result-card-label' }, 'Margin Required');
   addPanelElement(marginCard, 'div', { class: 'result-card-value', id: 'margin-display' }, '$0.00');
   const leverageSubtitle = addPanelElement(marginCard, 'div', { class: 'result-card-subtitle' });
-  addPanelElement(leverageSubtitle, 'span', { class: 'metric-label' }, 'Real Leverage');
   const elRealLeverage = addPanelElement(leverageSubtitle, 'span', { id: 'real-leverage-display' }, '0.00x');
   const feeCard = addPanelElement(panelEl56, 'div', { class: 'fee-card', title: 'Estimated fee per side: maker 0.02%, taker 0.05%. Actual fees depend on execution.' });
   const feeHeading = addPanelElement(feeCard, 'div', { class: 'fee-card-heading' });
-  addPanelElement(feeHeading, 'span', {}, 'Estimated Round-Trip Fees');
+  addPanelElement(feeHeading, 'span', {}, 'Estimated Fee');
   addPanelElement(feeHeading, 'span', { class: 'fee-card-badge' }, 'M / T');
   const feeBottom = addPanelElement(feeCard, 'div', { class: 'fee-card-bottom' });
   const elEstimatedFee = addPanelElement(feeBottom, 'div', { class: 'fee-values', id: 'estimated-fee-display' });
   const elMakerFee = addPanelElement(elEstimatedFee, 'span', { class: 'fee-maker' }, '-$0');
   addPanelElement(elEstimatedFee, 'span', { class: 'fee-separator' }, ' / ');
   const elTakerFee = addPanelElement(elEstimatedFee, 'span', { class: 'fee-taker' }, '-$0');
-  addPanelElement(feeBottom, 'span', { class: 'fee-card-rates' }, '0.02% / 0.05%');
   const details = addPanelElement(panelEl56, 'details', { class: 'position-details' });
   addPanelElement(details, 'summary', {}, 'Position Details');
   const nominalRow = addPanelElement(details, 'div', { class: 'aux-container' });
