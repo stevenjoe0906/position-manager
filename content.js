@@ -104,7 +104,7 @@
     .position-heading > div { font-size: inherit; margin: 0; }
     .position-heading .output-lbl { text-transform: none; font-weight: 500; letter-spacing: 0.02em; }
     .position-heading .output-val { min-width: 0; overflow-wrap: anywhere; text-align: right; }
-    .position-heading + .result-cards { margin-top: 8px; }
+    .position-heading + .result-cards { margin-top: 14px; }
     .account-cards.result-cards { margin: 0 0 8px; }
     .account-cards .result-card { background: #131722; padding: 5px 9px; }
     .account-cards .result-card-label { margin-bottom: 1px; }
