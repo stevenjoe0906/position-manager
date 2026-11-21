@@ -95,11 +95,10 @@
     .idol-slider { display: grid; overflow: hidden; margin-bottom: 14px; border-radius: 6px; }
     .idol-slider > .idol-quote-section { grid-area: 1 / 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
     .panel { --metric-font-size: 18px; }
-    .risk-heading .section-title, .account-cards .section-title, .atr-toggle, .atr-options button { font-size: var(--metric-font-size); }
     .atr-toggle { text-transform: none; display: flex; align-items: center; gap: 8px; }
     .atr-toggle input { width: auto; }
     .atr-options { display: flex; gap: 6px; margin: 8px 0; }
-    .atr-options button { font-weight: 600; flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
+    .atr-options button { font-size: var(--metric-font-size); font-weight: 600; flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
     .atr-options button[aria-pressed="true"] { border-color: #2962ff; background: #2962ff33; color: #fff; }
     .tracker-block.high-risk { background: #db5c66; color: #171717; }
     .high-risk .atr-options button[aria-pressed="true"] { background: #244aac; }
