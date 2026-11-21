@@ -196,14 +196,20 @@ test('legacy losses migrate once; signed records and metadata survive reload', (
   assert.equal(c.state.dailyProfitUSD, -50); assert.equal(c.state.currentDailyLossUSD, 80);
   c.state.lossRecords = []; c.recalculateTotalLossFromRecords(); assert.equal(c.state.dailyProfitUSD, 0);
 });
-test('new ticket sessions enable ATR without undoing manual override in same setup', () => {
-  let requests = 0;
-  const c = vm.createContext({state: {useATR: false}, inputUseATR: {checked: false}, recordDirection: {}, requestATRStop: () => requests++});
+test('ticket transitions disable ATR and preserve an explicit choice within the same setup', () => {
+  const state = {useATR: false};
+  const c = vm.createContext({state, recordDirection: {}, lastTicketStopValue: undefined,
+    disableATR() { state.useATR = false; }});
   vm.runInContext(source.slice(source.indexOf('  let tradeSession ='), source.indexOf('  // --- Scraper Interval Engine ---')), c);
-  c.syncTradeSession('LONG', 'BTC'); assert.equal(c.state.useATR, true); assert.equal(requests, 1);
-  c.state.useATR = false; c.inputUseATR.checked = false;
-  c.syncTradeSession('LONG', 'BTC'); assert.equal(c.state.useATR, false); assert.equal(requests, 1);
-  c.syncTradeSession(null, 'BTC'); c.syncTradeSession('LONG', 'BTC'); assert.equal(requests, 2);
-  c.syncTradeSession('SHORT', 'BTC'); assert.equal(requests, 3); assert.equal(c.recordDirection.value, 'SHORT');
-  c.syncTradeSession('SHORT', 'ETH'); assert.equal(requests, 4);
+  c.syncTradeSession('LONG', 'BTC');
+  assert.equal(c.state.useATR, false);
+  c.state.useATR = true;
+  c.syncTradeSession('LONG', 'BTC');
+  assert.equal(c.state.useATR, true);
+  for (const [direction, symbol] of [[null, 'BTC'], ['LONG', 'BTC'], ['SHORT', 'BTC'], ['SHORT', 'ETH']]) {
+    c.state.useATR = true;
+    c.syncTradeSession(direction, symbol);
+    assert.equal(c.state.useATR, false);
+    if (direction) assert.equal(c.recordDirection.value, direction);
+  }
 });
