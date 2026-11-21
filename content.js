@@ -781,17 +781,12 @@
 
   let tradeSession = null;
   function syncTradeSession(direction, symbol) {
-    if (!direction) {
-      tradeSession = null;
-      return;
-    }
-    const key = symbol + ':' + direction;
-    if (tradeSession === key) return;
+    const key = direction ? symbol + ':' + direction : null;
+    if (key === tradeSession) return;
     tradeSession = key;
-    recordDirection.value = direction;
-    state.useATR = true;
-    inputUseATR.checked = true;
-    requestATRStop();
+    disableATR();
+    lastTicketStopValue = undefined;
+    if (direction) recordDirection.value = direction;
   }
 
   // --- Scraper Interval Engine ---
@@ -891,8 +886,9 @@
       equityDisplay.textContent = equityFormat.format(parsedEquity);
     }
 
-    observeTicketStop();
     const ticketDirection = readTicketDirection();
+    syncTradeSession(ticketDirection, state.assetName);
+    observeTicketStop();
     state.ticketDirection = ticketDirection;
 
     const leverage = readTicketLeverage();
@@ -930,7 +926,6 @@
       stopDisplay.value = autoSLPrice;
     }
 
-    syncTradeSession(ticketDirection, state.assetName);
     state.atrValue = readChartATR();
     if (state.useATR) applyATRStop();
     updateATRControls();
