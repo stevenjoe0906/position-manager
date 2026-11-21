@@ -99,10 +99,12 @@
     .atr-options button[aria-pressed="true"] { border-color: #2962ff; background: #2962ff33; color: #fff; }
     .tracker-block.high-risk { background: #db5c66; color: #171717; }
     .high-risk .atr-options button[aria-pressed="true"] { background: #244aac; }
-    .risk-heading, .position-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-    .position-heading { font-size: 26px; }
+    .risk-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .position-heading { display: flex; align-items: baseline; gap: 10px; font-size: 20px; line-height: 1.2; }
     .position-heading > div { font-size: inherit; margin: 0; }
-    .position-heading .output-val { min-width: 0; overflow-wrap: anywhere; text-align: right; }
+    .position-heading .output-lbl { font-weight: 500; letter-spacing: 0.02em; }
+    .position-heading .output-val { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+    .position-heading + .result-cards { margin-top: 8px; }
     .account-cards.result-cards { margin: 0 0 8px; }
     .account-cards .result-card { padding: 5px 9px; }
     .account-cards .result-card-label { margin-bottom: 1px; }
