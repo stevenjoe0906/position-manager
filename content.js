@@ -22,11 +22,12 @@
   }
 
   // 1. State Configuration
+  const dailyLossLimitPercent = 3;
   let state = {
     assetName: 'CONNECTING...',
     accountEquity: 10000, 
     leverage: 3,
-    riskPercent: 1,
+    riskPercent: 0.5,
     entryPrice: 0,          
     stopLossPrice: 0,       
     stopLossPercent: 0,     
@@ -37,7 +38,6 @@
     atrValue: null,
     atrPending: false,
     ticketDirection: null,
-    dailyLossLimitPercent: 3, 
     currentDailyLossUSD: 0,
     dailyProfitUSD: 0,
     lossRecords: [] 
@@ -84,7 +84,7 @@
   // Construct the panel with DOM APIs instead of parsing HTML strings.
   // This also avoids createContextualFragment and innerHTML validator warnings.
   const panelStyle = document.createElement('style');
-  panelStyle.textContent = "\n      .panel {\n        width: 340px;\n        background: #1c2030;\n        border: 1px solid #2a2e39;\n        border-radius: 8px;\n        padding: 16px;\n        color: #d1d4dc;\n        box-shadow: 0 10px 25px rgba(0,0,0,0.5);\n        display: block;\n      }\n      .panel.hidden { display: none; }\n\n      .global-header-row {\n        position: relative;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        width: 100%;\n        margin-bottom: 14px;\n        padding: 4px 0;\n      }\n      .header { \n        font-size: 14px; \n        font-weight: 800; \n        color: #2962ff; \n        letter-spacing: 1.5px; \n        text-transform: uppercase; \n        cursor: move; \n        text-align: center;\n        width: 100%;\n        padding: 0 32px;\n      }\n      \n      .window-icon-btn {\n        position: absolute;\n        right: 0;\n        top: 50%;\n        transform: translateY(-50%);\n        background: transparent;\n        border: none;\n        color: #787b86;\n        cursor: pointer;\n        padding: 6px;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: color 0.15s, transform 0.15s;\n        border-radius: 4px;\n      }\n      .window-icon-btn:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.05); }\n      .window-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }\n\n      .idol-quote-section {\n        display: flex;\n        align-items: center;\n        gap: 14px;\n        background: #131722;\n        border: 1px solid #2a2e39;\n        border-radius: 6px;\n        padding: 12px 14px;\n        margin-bottom: 14px;\n      }\n      .idol-avatar-box {\n        width: 48px;\n        height: 48px;\n        border-radius: 50%;\n        border: 2px solid #2a2e39;\n        overflow: hidden;\n        flex-shrink: 0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        background: #1c2030;\n      }\n      .idol-avatar-box img {\n        width: 100%;\n        height: 100%;\n        object-fit: cover;\n      }\n      .idol-text-box {\n        flex: 1;\n        display: flex;\n        align-items: center;\n      }\n      .idol-quote-content {\n        font-size: 14px;\n        line-height: 18px;\n        color: #e0e3eb;\n        font-style: italic;\n        font-weight: 600;\n      }\n\n      .expand-trigger-anchor {\n        position: fixed;\n        right: 0;\n        top: 50%;\n        transform: translateY(-50%);\n        width: 24px;\n        height: 60px;\n        background: #1c2030;\n        border: 1px solid #2a2e39;\n        border-right: none;\n        border-radius: 8px 0 0 8px;\n        display: none;\n        align-items: center;\n        justify-content: center;\n        color: #2962ff;\n        cursor: pointer;\n        box-shadow: -4px 0 15px rgba(0,0,0,0.4);\n        z-index: 99999999;\n        transition: color 0.15s, background-color 0.15s;\n      }\n      .expand-trigger-anchor:hover { background: #131722; color: #00e676; }\n      .expand-trigger-anchor.visible { display: flex; }\n      .expand-trigger-anchor svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }\n\n      .price { font-size: 24px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 4px; }\n      \n      .direction-badge { \n        display: none; \n        font-size: 14px; \n        font-weight: 800; \n        text-align: center; \n        margin-bottom: 14px; \n        border-bottom: 1px solid #2a2e39; \n        padding-bottom: 10px; \n      }\n      .direction-badge.visible { display: block; }\n      .dir-long { color: #00e676; }\n      .dir-short { color: #ff5252; }\n\n      .grid { display: flex; gap: 12px; margin-bottom: 12px; }\n      .grid > div { flex: 1; }\n      label { display: block; font-size: 14px; color: #787b86; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; }\n      input { width: 100%; padding: 8px 10px; background: #131722; border: 1px solid #2a2e39; border-radius: 4px; color: #ffffff; box-sizing: border-box; font-size: 14px; }\n      input:focus { border-color: #2962ff; outline: none; }\n      .read-only-badge { font-size: 11px; background: #2962ff22; color: #2962ff; padding: 2px 5px; border-radius: 3px; float: right; margin-top: 2px; }\n      \n      .tracker-block { \n        background: #131722; \n        padding: 10px; \n        border-radius: 6px; \n        border: 1px solid #2a2e39; \n        margin-bottom: 12px; \n      }\n      .tracker-flex { \n        display: flex; \n        justify-content: space-between; \n        align-items: center; \n        font-size: 14px; \n      }\n      .loss-input-row { display: flex; gap: 8px; margin-top: 10px; margin-bottom: 10px; }\n      \n      .inline-add-icon-btn { \n        background: transparent; \n        border: 1px solid #2a2e39; \n        color: #787b86; \n        padding: 0 12px; \n        border-radius: 4px; \n        cursor: pointer; \n        transition: color 0.15s, background-color 0.15s, border-color 0.15s; \n        display: flex;\n        align-items: center;\n        justify-content: center;\n      }\n      .inline-add-icon-btn:hover { color: #ffffff; background-color: #2a2e39; border-color: #787b86; }\n      .inline-add-icon-btn svg { width: 14px; height: 14px; fill: currentColor; }\n\n      .action-icon-btn {\n        background: transparent;\n        border: none;\n        color: #787b86;\n        cursor: pointer;\n        padding: 4px;\n        border-radius: 4px;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: color 0.15s, background-color 0.15s;\n      }\n      .action-icon-btn:hover { color: #ffffff; background-color: #2a2e39; }\n      .action-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }\n\n      .loss-log-list { \n        max-height: 125px; \n        overflow-y: auto; \n        border-top: 1px solid #2a2e39; \n        padding-top: 8px;\n        display: flex;\n        flex-direction: column;\n        gap: 6px;\n      }\n      .loss-log-list::-webkit-scrollbar { width: 4px; }\n      .loss-log-list::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 2px; }\n      \n      .loss-log-item {\n        display: flex;\n        justify-content: space-between;\n        align-items: center;\n        background: #1c2030;\n        padding: 6px 10px;\n        border-radius: 4px;\n        border: 1px solid #2a2e39;\n      }\n      .log-meta-stack { display: flex; flex-direction: column; gap: 2px; }\n      .log-primary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }\n      .log-ticker-name { color: #b2b5be; }\n      .log-val-amount { color: #ff5252; font-weight: bold; }\n      .log-time-secondary { font-size: 11px; color: #5d606b; font-variant-numeric: tabular-nums; font-weight: normal; }\n      \n      .remove-log-btn {\n        background: transparent;\n        border: none;\n        padding: 4px;\n        cursor: pointer;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        color: #787b86;\n        border-radius: 3px;\n        transition: color 0.15s, background 0.15s;\n      }\n      .remove-log-btn:hover { color: #ff5252; background: rgba(255, 82, 82, 0.15); }\n      .remove-log-btn svg { width: 12px; height: 12px; fill: currentColor; }\n\n      .output-area { background: #131722; padding: 14px; border-radius: 6px; border: 1px solid #2a2e39; margin-top: 16px; }\n      .output-lbl { font-size: 14px; color: #787b86; text-transform: uppercase; font-weight: bold; }\n      .output-val { font-size: 26px; font-weight: bold; color: #00e676; margin: 6px 0 2px 0; font-variant-numeric: tabular-nums; }\n      \n      .aux-container { font-size: 13px; color: #787b86; margin-bottom: 6px; display: flex; justify-content: space-between; }\n      .aux-val { color: #b2b5be; font-weight: 500; font-variant-numeric: tabular-nums; }\n      .aux-val-danger { color: #ff5252; font-weight: 700; font-variant-numeric: tabular-nums; }\n\n      .apply-btn { width: 100%; border: none; color: #ffffff; background: #2962ff; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.15s; margin-top: 8px; }\n      .apply-btn:hover { background: #1e4bd8; }\n      .apply-btn.success { background: #00e676; color: #131722; }\n      .apply-btn:disabled { background: #2a2e39; color: #787b86; cursor: not-allowed; }\n      \n      .warning { display: none; background: rgba(255, 82, 82, 0.15); border: 1px solid #ff5252; color: #ff5252; padding: 8px; border-radius: 4px; font-size: 14px; margin-top: 10px; font-weight: bold; text-align: center; }\n      .warning.active { display: block; }\n    ";
+  panelStyle.textContent = "\n      .panel {\n        width: 340px;\n        background: #1c2030;\n        border: 1px solid #2a2e39;\n        border-radius: 8px;\n        padding: 16px;\n        color: #d1d4dc;\n        box-shadow: 0 10px 25px rgba(0,0,0,0.5);\n        display: block;\n      }\n      .panel.hidden { display: none; }\n\n      .global-header-row {\n        position: relative;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        width: 100%;\n        margin-bottom: 14px;\n        padding: 4px 0;\n      }\n      .header { \n        font-size: 14px; \n        font-weight: 800; \n        color: #2962ff; \n        letter-spacing: 1.5px; \n        text-transform: uppercase; \n        cursor: move; \n        text-align: center;\n        width: 100%;\n        padding: 0 32px;\n      }\n      \n      .window-icon-btn {\n        position: absolute;\n        right: 0;\n        top: 50%;\n        transform: translateY(-50%);\n        background: transparent;\n        border: none;\n        color: #787b86;\n        cursor: pointer;\n        padding: 6px;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: color 0.15s, transform 0.15s;\n        border-radius: 4px;\n      }\n      .window-icon-btn:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.05); }\n      .window-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }\n\n      .idol-quote-section {\n        display: flex;\n        align-items: center;\n        gap: 14px;\n        background: #131722;\n        border: 1px solid #2a2e39;\n        border-radius: 6px;\n        padding: 12px 14px;\n        margin-bottom: 14px;\n      }\n      .idol-avatar-box {\n        width: 48px;\n        height: 48px;\n        border-radius: 50%;\n        border: 2px solid #2a2e39;\n        overflow: hidden;\n        flex-shrink: 0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        background: #1c2030;\n      }\n      .idol-avatar-box img {\n        width: 100%;\n        height: 100%;\n        object-fit: cover;\n      }\n      .idol-text-box {\n        flex: 1;\n        display: flex;\n        align-items: center;\n      }\n      .idol-quote-content {\n        font-size: 14px;\n        line-height: 18px;\n        color: #e0e3eb;\n        font-style: italic;\n        font-weight: 600;\n      }\n\n      .expand-trigger-anchor {\n        position: fixed;\n        right: 0;\n        top: 50%;\n        transform: translateY(-50%);\n        width: 24px;\n        height: 60px;\n        background: #1c2030;\n        border: 1px solid #2a2e39;\n        border-right: none;\n        border-radius: 8px 0 0 8px;\n        display: none;\n        align-items: center;\n        justify-content: center;\n        color: #2962ff;\n        cursor: pointer;\n        box-shadow: -4px 0 15px rgba(0,0,0,0.4);\n        z-index: 99999999;\n        transition: color 0.15s, background-color 0.15s;\n      }\n      .expand-trigger-anchor:hover { background: #131722; color: #00e676; }\n      .expand-trigger-anchor.visible { display: flex; }\n      .expand-trigger-anchor svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }\n\n      .price { font-size: 24px; font-weight: bold; color: #ffffff; text-align: center; margin-bottom: 4px; }\n      \n      .direction-badge { \n        display: none; \n        font-size: 14px; \n        font-weight: 800; \n        text-align: center; \n        margin-bottom: 14px; \n        border-bottom: 1px solid #2a2e39; \n        padding-bottom: 10px; \n      }\n      .direction-badge.visible { display: block; }\n      .dir-long { color: #00e676; }\n      .dir-short { color: #ff5252; }\n\n      .grid { display: flex; gap: 12px; margin-bottom: 12px; }\n      .grid > div { flex: 1; }\n      label { display: block; font-size: 14px; color: #787b86; text-transform: uppercase; margin-bottom: 6px; font-weight: bold; }\n      input { width: 100%; padding: 8px 10px; background: #131722; border: 1px solid #2a2e39; border-radius: 4px; color: #ffffff; box-sizing: border-box; font-size: 14px; }\n      input:focus { border-color: #2962ff; outline: none; }\n      .read-only-badge { font-size: 11px; background: #2962ff22; color: #2962ff; padding: 2px 5px; border-radius: 3px; float: right; margin-top: 2px; }\n      \n      .tracker-block { \n        background: #131722; \n        padding: 10px; \n        border-radius: 6px; \n        border: 1px solid #2a2e39; \n        margin-bottom: 8px; \n      }\n      .tracker-flex { \n        display: flex; \n        justify-content: space-between; \n        align-items: center; \n        font-size: 14px; \n      }\n      .loss-input-row { display: flex; gap: 8px; margin-top: 10px; margin-bottom: 10px; }\n      \n      .inline-add-icon-btn { \n        background: transparent; \n        border: 1px solid #2a2e39; \n        color: #787b86; \n        padding: 0 12px; \n        border-radius: 4px; \n        cursor: pointer; \n        transition: color 0.15s, background-color 0.15s, border-color 0.15s; \n        display: flex;\n        align-items: center;\n        justify-content: center;\n      }\n      .inline-add-icon-btn:hover { color: #ffffff; background-color: #2a2e39; border-color: #787b86; }\n      .inline-add-icon-btn svg { width: 14px; height: 14px; fill: currentColor; }\n\n      .action-icon-btn {\n        background: transparent;\n        border: none;\n        color: #787b86;\n        cursor: pointer;\n        padding: 4px;\n        border-radius: 4px;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        transition: color 0.15s, background-color 0.15s;\n      }\n      .action-icon-btn:hover { color: #ffffff; background-color: #2a2e39; }\n      .action-icon-btn svg { width: 16px; height: 16px; fill: currentColor; }\n\n      .loss-log-list { \n        max-height: 125px; \n        overflow-y: auto; \n        border-top: 1px solid #2a2e39; \n        padding-top: 8px;\n        display: flex;\n        flex-direction: column;\n        gap: 6px;\n      }\n      .loss-log-list::-webkit-scrollbar { width: 4px; }\n      .loss-log-list::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 2px; }\n      \n      .loss-log-item {\n        display: flex;\n        justify-content: space-between;\n        align-items: center;\n        background: #1c2030;\n        padding: 6px 10px;\n        border-radius: 4px;\n        border: 1px solid #2a2e39;\n      }\n      .log-meta-stack { display: flex; flex-direction: column; gap: 2px; }\n      .log-primary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }\n      .log-ticker-name { color: #b2b5be; }\n      .log-val-amount { color: #ff5252; font-weight: bold; }\n      .log-time-secondary { font-size: 11px; color: #5d606b; font-variant-numeric: tabular-nums; font-weight: normal; }\n      \n      .remove-log-btn {\n        background: transparent;\n        border: none;\n        padding: 4px;\n        cursor: pointer;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        color: #787b86;\n        border-radius: 3px;\n        transition: color 0.15s, background 0.15s;\n      }\n      .remove-log-btn:hover { color: #ff5252; background: rgba(255, 82, 82, 0.15); }\n      .remove-log-btn svg { width: 12px; height: 12px; fill: currentColor; }\n\n      .output-area { background: #131722; padding: 14px; border-radius: 6px; border: 1px solid #2a2e39; margin-top: 0; }\n      .output-lbl { font-size: 14px; color: #787b86; text-transform: uppercase; font-weight: bold; }\n      .output-val { font-size: 26px; font-weight: bold; color: #00e676; margin: 6px 0 2px 0; font-variant-numeric: tabular-nums; }\n      \n      .aux-container { font-size: 13px; color: #787b86; margin-bottom: 6px; display: flex; justify-content: space-between; }\n      .aux-val { color: #b2b5be; font-weight: 500; font-variant-numeric: tabular-nums; }\n      .aux-val-danger { color: #ff5252; font-weight: 700; font-variant-numeric: tabular-nums; }\n\n      .apply-btn { width: 100%; border: none; color: #ffffff; background: #2962ff; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.15s; margin-top: 8px; }\n      .apply-btn:hover { background: #1e4bd8; }\n      .apply-btn.success { background: #00e676; color: #131722; }\n      .apply-btn:disabled { background: #2a2e39; color: #787b86; cursor: not-allowed; }\n      \n      .warning { display: none; background: rgba(255, 82, 82, 0.15); border: 1px solid #ff5252; color: #ff5252; padding: 8px; border-radius: 4px; font-size: 14px; margin-top: 10px; font-weight: bold; text-align: center; }\n      .warning.active { display: block; }\n    ";
   panelStyle.textContent += `
     .panel { max-height: calc(100vh - 110px); overflow-y: auto; }
     .apply-btn.long { background: #31BD65; }
@@ -97,7 +97,18 @@
     .atr-options { display: flex; gap: 6px; margin: 8px 0; }
     .atr-options button { font-size: 16px; font-weight: 600; flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
     .atr-options button[aria-pressed="true"] { border-color: #2962ff; background: #2962ff33; color: #fff; }
-    .atr-status { font-size: 12px; color: #b2b5be; line-height: 1.4; }
+    .tracker-block.high-risk { background: #db5c66; color: #171717; }
+    .high-risk .atr-options button[aria-pressed="true"] { background: #244aac; }
+    .risk-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .position-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 20px; line-height: 1.2; }
+    .position-heading > div { font-size: inherit; margin: 0; }
+    .position-heading .output-lbl { text-transform: none; font-weight: 500; letter-spacing: 0.02em; }
+    .position-heading .output-val { min-width: 0; overflow-wrap: anywhere; text-align: right; }
+    .position-heading + .result-cards { margin-top: 14px; }
+    .account-cards.result-cards { margin: 0 0 8px; }
+    .account-cards .result-card { background: #131722; padding: 5px 9px; }
+    .account-cards .result-card-label { margin-bottom: 1px; }
+    .position-details output:empty::after { content: '—'; }
     .result-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin: 12px 0 8px; }
     .result-card { min-width: 0; background: #1c2434; border: 1px solid #30384a; border-radius: 7px; padding: 11px 10px; }
     .result-card-label { color: #9299aa; font-size: 11px; font-weight: 600; margin-bottom: 7px; }
@@ -145,12 +156,26 @@
   const panelEl7 = addPanelElement(panelEl5, "button", {"class": "window-icon-btn", "id": "widget-minimize-trigger", "title": "Minimize Window"});
   const panelEl8 = addPanelElement(panelEl7, "svg", {"viewBox": "0 0 24 24"});
   const panelEl9 = addPanelElement(panelEl8, "path", {"d": "M19 13H5v-2h14v2z"});
-  const panelEl10 = addPanelElement(panelEl4, "div", {"class": "idol-quote-section"});
-  const panelEl11 = addPanelElement(panelEl10, "div", {"class": "idol-avatar-box"});
-  const panelEl12 = addPanelElement(panelEl11, "img", {"src": "", "alt": "Avatar"});
-  const panelEl13 = addPanelElement(panelEl10, "div", {"class": "idol-text-box"});
-  const panelEl14 = addPanelElement(panelEl13, "span", {"class": "idol-quote-content"});
-  panelEl14.appendChild(document.createTextNode("\"It never was my thinking that made the big money for me. It always was my sitting.\""));
+  const idolSection = addPanelElement(panelEl4, 'div');
+  async function loadIdol() {
+    const folder = extRuntime.getURL('idol/');
+    let response = await fetch(new URL('idols.json', folder)).catch(() => null);
+    if (!response?.ok) response = await fetch(new URL('idols.example.json', folder));
+    if (!response.ok) throw new Error('Could not load idol configuration');
+    const entries = await response.json();
+    const idols = entries.filter(entry => entry && typeof entry.name === 'string' &&
+      typeof entry.imagePath === 'string' && entry.imagePath.trim() && typeof entry.famousSaying === 'string');
+    if (!idols.length) return;
+    const idol = idols[Math.floor(Math.random() * idols.length)];
+    const imageURL = new URL(idol.imagePath, folder);
+    if (!imageURL.href.startsWith(folder)) return;
+    idolSection.className = 'idol-quote-section';
+    const avatar = addPanelElement(idolSection, 'div', { class: 'idol-avatar-box' });
+    addPanelElement(avatar, 'img', { src: imageURL.href, alt: idol.name });
+    const caption = addPanelElement(idolSection, 'div', { class: 'idol-text-box' });
+    addPanelElement(caption, 'span', { class: 'idol-quote-content' }, idol.famousSaying || idol.name);
+  }
+  loadIdol().catch(error => console.warn('Position Manager idol panel:', error));
   const panelEl17 = addPanelElement(panelEl4, "div", {"class": "tracker-block"});
   const panelEl18 = addPanelElement(panelEl17, "div", {"class": "tracker-flex"});
   const panelEl19 = addPanelElement(panelEl18, "div", {});
@@ -158,6 +183,7 @@
   panelEl20.appendChild(document.createTextNode("Daily Profit:"));
   const panelEl21 = addPanelElement(panelEl19, "span", {"id": "loss-display", "style": "font-weight: bold; color: #ffffff;"});
   panelEl21.appendChild(document.createTextNode("$0.00"));
+  addPanelElement(panelEl19, 'span', { class: 'atr-status' }, ` (Max DD: ${dailyLossLimitPercent}%)`);
   const panelEl22 = addPanelElement(panelEl18, "button", {"class": "action-icon-btn", "id": "clear-all-btn", "title": "Clear All Log Entries"});
   const panelEl23 = addPanelElement(panelEl22, "svg", {"viewBox": "0 0 24 24"});
   const panelEl24 = addPanelElement(panelEl23, "path", {"d": "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"});
@@ -170,54 +196,54 @@
   const panelEl28 = addPanelElement(panelEl27, "svg", {"viewBox": "0 0 24 24"});
   const panelEl29 = addPanelElement(panelEl28, "path", {"d": "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"});
   const panelEl30 = addPanelElement(panelEl17, "div", {"class": "loss-log-list", "id": "loss-log-list"});
-  const panelEl31 = addPanelElement(panelEl4, "div", {"class": "grid"});
-  const panelEl32 = addPanelElement(panelEl31, "div", {});
-  const panelEl33 = addPanelElement(panelEl32, "label", {});
-  panelEl33.appendChild(document.createTextNode("Equity ($)"));
-  const panelEl34 = addPanelElement(panelEl32, "input", {"type": "number", "id": "eq", "value": ""});
-  const panelEl35 = addPanelElement(panelEl31, "div", {});
-  const panelEl36 = addPanelElement(panelEl35, "label", {});
-  panelEl36.appendChild(document.createTextNode("Leverage"));
-  const panelEl37 = addPanelElement(panelEl35, "input", {"type": "number", "id": "lev", "value": ""});
-  const panelEl38 = addPanelElement(panelEl4, "div", {"class": "grid"});
-  const panelEl39 = addPanelElement(panelEl38, "div", {});
-  const panelEl40 = addPanelElement(panelEl39, "label", {});
-  panelEl40.appendChild(document.createTextNode("Risk (%)"));
-  const panelEl41 = addPanelElement(panelEl39, "input", {"type": "number", "id": "rsk", "step": "0.1", "value": ""});
-  const panelEl42 = addPanelElement(panelEl38, "div", {});
-  const panelEl43 = addPanelElement(panelEl42, "label", {});
-  panelEl43.appendChild(document.createTextNode("MAX DD (%)"));
-  const panelEl44 = addPanelElement(panelEl42, "input", {"type": "number", "id": "loss-cap", "step": "0.5", "value": ""});
-  const panelEl45 = addPanelElement(panelEl4, "div", {"class": "grid"});
-  const panelEl46 = addPanelElement(panelEl45, "div", {});
-  const panelEl47 = addPanelElement(panelEl46, "label", {});
-  panelEl47.appendChild(document.createTextNode("Entry Price"));
-  const panelEl48 = addPanelElement(panelEl46, "input", {"type": "number", "id": "entry-price", "step": "0.00001", "placeholder": "Type Entry..."});
-  const panelEl49 = addPanelElement(panelEl45, "div", {});
-  const panelEl50 = addPanelElement(panelEl49, "label", {});
-  panelEl50.appendChild(document.createTextNode("Stop Loss Price"));
-  const panelEl51 = addPanelElement(panelEl49, "input", {"type": "number", "id": "sl-price", "step": "0.00001", "placeholder": "Type SL..."});
+  const accountCards = addPanelElement(panelEl4, 'div', { class: 'result-cards account-cards' });
+  function accountMetric(label) {
+    const card = addPanelElement(accountCards, 'div', { class: 'result-card' });
+    addPanelElement(card, 'div', { class: 'result-card-label' }, label);
+    return addPanelElement(card, 'div', { class: 'result-card-value' });
+  }
+  const equityDisplay = accountMetric('Equity');
+  const leverageDisplay = accountMetric('Leverage');
+  const equityFormat = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+  const riskBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
+  const riskHeading = addPanelElement(riskBlock, 'div', { class: 'risk-heading' });
+  addPanelElement(riskHeading, 'span', {}, 'Risk Per Trade');
+  const riskWarning = addPanelElement(riskHeading, 'strong', { role: 'status' });
+  const riskOptions = addPanelElement(riskBlock, 'div', { class: 'atr-options risk-options', role: 'group', 'aria-label': 'Risk per trade' });
+  const riskButtons = [0.25, 0.5, 1, 2].map(percent => {
+    const button = addPanelElement(riskOptions, 'button', {
+      type: 'button', 'aria-pressed': String(percent === state.riskPercent)
+    }, `${percent}%`);
+    button.addEventListener('click', () => {
+      state.riskPercent = percent;
+      for (const option of riskButtons) option.setAttribute('aria-pressed', String(option === button));
+      riskBlock.classList.toggle('high-risk', percent === 2);
+      riskWarning.textContent = percent === 2 ? 'High Risk' : '';
+      calculateRiskSystem();
+    });
+    return button;
+  });
   const atrBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
   const atrHeader = addPanelElement(atrBlock, 'div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 8px;' });
   const atrLabel = addPanelElement(atrHeader, 'label', { class: 'atr-toggle', style: 'margin-bottom: 0;' });
   const inputUseATR = addPanelElement(atrLabel, 'input', { type: 'checkbox', id: 'use-atr' });
   addPanelElement(atrLabel, 'span', {}, 'Use ATR for Stop');
-  const atrControls = addPanelElement(atrBlock, 'div', { hidden: '' });
   const atrStatus = addPanelElement(atrHeader, 'span', { class: 'atr-status', role: 'status', 'aria-label': 'Current ATR', style: 'font-size: 14px; white-space: nowrap; text-align: right;' }, '—');
-  const atrMultipliers = addPanelElement(atrControls, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR multiplier' });
+  const atrMultipliers = addPanelElement(atrBlock, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR multiplier' });
   const atrMultiplierButtons = [1, 2, 3, 4].map(multiplier => {
-    const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': String(multiplier === 1) }, `${multiplier}x`);
+    const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': 'false' }, `${multiplier}x`);
     button.addEventListener('click', () => {
+      state.useATR = true;
+      inputUseATR.checked = true;
       state.atrMultiplier = multiplier;
       requestATRStop();
     });
     return button;
   });
   const panelEl56 = addPanelElement(panelEl4, "div", {"class": "output-area"});
-  const panelEl57 = addPanelElement(panelEl56, "div", {"class": "output-lbl"});
-  panelEl57.appendChild(document.createTextNode("Amount (Tokens / Units)"));
-  const panelEl58 = addPanelElement(panelEl56, "div", {"class": "output-val", "id": "amount-display"});
-  panelEl58.appendChild(document.createTextNode("0.00"));
+  const positionHeading = addPanelElement(panelEl56, 'div', { class: 'position-heading' });
+  addPanelElement(positionHeading, 'div', { class: 'output-lbl' }, 'Position');
+  addPanelElement(positionHeading, 'div', { class: 'output-val', id: 'amount-display' }, '0.00');
   const resultCards = addPanelElement(panelEl56, 'div', { class: 'result-cards' });
   const riskCard = addPanelElement(resultCards, 'div', { class: 'result-card' });
   addPanelElement(riskCard, 'div', { class: 'result-card-label' }, 'Stop Loss');
@@ -240,6 +266,13 @@
   const elTakerFee = addPanelElement(elEstimatedFee, 'span', { class: 'fee-taker' }, '-$0');
   const details = addPanelElement(panelEl56, 'details', { class: 'position-details' });
   addPanelElement(details, 'summary', {}, 'Position Details');
+  function detailPrice(label) {
+    const row = addPanelElement(details, 'div', { class: 'aux-container' });
+    addPanelElement(row, 'span', {}, label);
+    return addPanelElement(row, 'output', { class: 'aux-val', 'aria-label': label, 'aria-live': 'off' });
+  }
+  const entryDisplay = detailPrice('Entry Price');
+  const stopDisplay = detailPrice('Stop Loss Price');
   const nominalRow = addPanelElement(details, 'div', { class: 'aux-container' });
   addPanelElement(nominalRow, 'span', {}, 'Nominal Position Size:');
   addPanelElement(nominalRow, 'span', { class: 'aux-val', id: 'nominal-display' }, '$0.00');
@@ -252,11 +285,8 @@
   panelEl72.appendChild(document.createTextNode("⚠️ EXCEEDS RISK LIMITS!"));
 
   shadowRoot.getElementById('drag-handle').textContent = state.assetName;
-  shadowRoot.querySelector('.idol-avatar-box img').src = extRuntime.getURL('livermore.jpg');
-  shadowRoot.getElementById('eq').value = state.accountEquity;
-  shadowRoot.getElementById('lev').value = state.leverage;
-  shadowRoot.getElementById('rsk').value = state.riskPercent;
-  shadowRoot.getElementById('loss-cap').value = state.dailyLossLimitPercent;
+  equityDisplay.textContent = equityFormat.format(state.accountEquity);
+  leverageDisplay.textContent = `${state.leverage}x`;
 
   // UI Element Cache
   const panelMain = shadowRoot.getElementById('main-widget-panel');
@@ -271,10 +301,7 @@
   const elSLMoney = shadowRoot.getElementById('sl-money-display');
   const btnApply = shadowRoot.getElementById('apply-btn');
   const elWarn = shadowRoot.getElementById('warn-banner');
-  const inputEquity = shadowRoot.getElementById('eq');
   const inputSLDistance = shadowRoot.getElementById('sl-distance');
-  const inputEntryPrice = shadowRoot.getElementById('entry-price');
-  const inputSLPrice = shadowRoot.getElementById('sl-price');
   const elLossDisplay = shadowRoot.getElementById('loss-display');
   const inputLossAdder = shadowRoot.getElementById('loss-adder');
   const btnAddLoss = shadowRoot.getElementById('add-loss-btn');
@@ -426,7 +453,7 @@
     }
 
     const dollarRisk = state.accountEquity * (state.riskPercent / 100);
-    const maxDDRiskUSD = state.accountEquity * (state.dailyLossLimitPercent / 100);
+    const maxDDRiskUSD = state.accountEquity * (dailyLossLimitPercent / 100);
     const slDecimal = state.stopLossPercent / 100;
     
     let nominalSize = slDecimal > 0 ? dollarRisk / slDecimal : 0;
@@ -565,31 +592,6 @@
     }
   });
 
-  const bindInput = (id, stateKey) => {
-    shadowRoot.getElementById(id).addEventListener('input', (e) => {
-      state[stateKey] = Number(e.target.value);
-      calculateRiskSystem();
-    });
-  };
-
-  bindInput('eq', 'accountEquity');
-  bindInput('lev', 'leverage');
-  bindInput('rsk', 'riskPercent');
-  bindInput('loss-cap', 'dailyLossLimitPercent');
-  
-  inputEntryPrice.addEventListener('input', (e) => {
-    state.entryPrice = Number(e.target.value);
-    if (state.useATR) requestATRStop();
-    calculateRiskSystem();
-  });
-
-  inputSLPrice.addEventListener('input', (e) => {
-    state.stopLossPrice = Number(e.target.value);
-    disableATR();
-    queueTicketStop(state.stopLossPrice);
-    calculateRiskSystem();
-  });
-
   // Explicit Manual Injection Event Listener
   btnApply.addEventListener('click', () => {
     const val = btnApply.getAttribute('data-amount') || '0';
@@ -676,7 +678,7 @@
     lastTicketStopValue = input.value;
     disableATR();
     state.stopLossPrice = cleanAndParseFloat(input.value);
-    inputSLPrice.value = input.value === '' ? '' : state.stopLossPrice;
+    stopDisplay.value = input.value === '' ? '' : state.stopLossPrice;
     calculateRiskSystem();
   }
 
@@ -736,8 +738,9 @@
   }
 
   function updateATRControls() {
-    atrControls.hidden = !state.useATR;
-    atrMultiplierButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.atrMultiplier === [1, 2, 3, 4][index])));
+    atrMultiplierButtons.forEach((button, index) => {
+      button.setAttribute('aria-pressed', String(state.useATR && state.atrMultiplier === index + 1));
+    });
     atrStatus.textContent = state.atrValue === null
       ? '—'
       : String(state.atrValue);
@@ -745,14 +748,14 @@
 
   function applyATRStop() {
     if (!state.useATR || !state.atrPending || state.atrValue === null) return;
-    if (shadowRoot.activeElement === inputSLPrice || !state.ticketDirection) return;
+    if (!state.ticketDirection) return;
     state.direction = state.ticketDirection;
     const stop = state.entryPrice + (state.direction === 'SHORT' ? 1 : -1) * state.atrMultiplier * state.atrValue;
     state.stopLossPrice = state.entryPrice > 0 && Number.isFinite(stop) && stop > 0
       ? Number(stop.toPrecision(12)) : 0;
     // Reject a distance lost to floating-point rounding.
     if (state.stopLossPrice === state.entryPrice) state.stopLossPrice = 0;
-    inputSLPrice.value = state.stopLossPrice || '';
+    stopDisplay.value = state.stopLossPrice || '';
     state.atrPending = false;
     queueTicketStop(state.stopLossPrice);
   }
@@ -764,7 +767,7 @@
     state.atrPending = true;
     // Do not keep sizing from a previous entry's stop while waiting for ATR.
     state.stopLossPrice = 0;
-    inputSLPrice.value = '';
+    stopDisplay.value = '';
     applyATRStop();
     updateATRControls();
     calculateRiskSystem();
@@ -780,17 +783,12 @@
 
   let tradeSession = null;
   function syncTradeSession(direction, symbol) {
-    if (!direction) {
-      tradeSession = null;
-      return;
-    }
-    const key = symbol + ':' + direction;
-    if (tradeSession === key) return;
+    const key = direction ? symbol + ':' + direction : null;
+    if (key === tradeSession) return;
     tradeSession = key;
-    recordDirection.value = direction;
-    state.useATR = true;
-    inputUseATR.checked = true;
-    requestATRStop();
+    disableATR();
+    lastTicketStopValue = undefined;
+    if (direction) recordDirection.value = direction;
   }
 
   // --- Scraper Interval Engine ---
@@ -887,21 +885,18 @@
 
     if (parsedEquity > 0 && state.accountEquity !== parsedEquity) {
       state.accountEquity = parsedEquity;
-      if (shadowRoot.activeElement !== inputEquity) {
-        inputEquity.value = Math.round(parsedEquity);
-      }
+      equityDisplay.textContent = equityFormat.format(parsedEquity);
     }
 
-    observeTicketStop();
     const ticketDirection = readTicketDirection();
+    syncTradeSession(ticketDirection, state.assetName);
+    observeTicketStop();
     state.ticketDirection = ticketDirection;
 
     const leverage = readTicketLeverage();
     if (leverage !== null) {
       state.leverage = leverage;
-      if (shadowRoot.activeElement !== shadowRoot.getElementById('lev')) {
-        shadowRoot.getElementById('lev').value = leverage;
-      }
+      leverageDisplay.textContent = `${leverage}x`;
     }
     flushTicketStop();
 
@@ -921,19 +916,18 @@
       autoSLPrice = cleanAndParseFloat(slInputDom.value);
     }
 
-    if (autoEntryPrice > 0 && shadowRoot.activeElement !== inputEntryPrice) {
+    if (autoEntryPrice > 0) {
       const entryChanged = state.entryPrice !== autoEntryPrice;
       state.entryPrice = autoEntryPrice;
-      inputEntryPrice.value = autoEntryPrice;
+      entryDisplay.value = autoEntryPrice;
       if (state.useATR && entryChanged) requestATRStop();
     }
 
-    if (!state.useATR && !pendingTicketStop && autoSLPrice > 0 && shadowRoot.activeElement !== inputSLPrice) {
+    if (!state.useATR && !pendingTicketStop && autoSLPrice > 0) {
       state.stopLossPrice = autoSLPrice;
-      inputSLPrice.value = autoSLPrice;
+      stopDisplay.value = autoSLPrice;
     }
 
-    syncTradeSession(ticketDirection, state.assetName);
     state.atrValue = readChartATR();
     if (state.useATR) applyATRStop();
     updateATRControls();

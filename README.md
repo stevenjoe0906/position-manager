@@ -12,7 +12,7 @@ The extension is designed to make position sizing deliberate and consistent befo
 - Reads the current symbol, market price, account equity, limit or stop entry price, and stop-loss price from TradingView when available
 - Applies the calculated quantity to TradingView's quantity field
 - Records signed realized profit/loss and trade direction for the current day in browser local storage
-- Enforces a configurable maximum daily drawdown
+- Enforces a fixed 3% daily loss limit
 - Disables position application when:
   - the daily loss limit has been reached, or
   - the required margin exceeds account equity
@@ -67,9 +67,9 @@ Firefox removes temporary extensions when the browser closes, so you must load i
 ## Usage
 
 1. Open a TradingView chart and its order ticket.
-2. Confirm or enter your account equity and leverage.
-3. Set your desired risk percentage and maximum daily drawdown.
-4. Enter an entry price and stop-loss price. When supported by the current TradingView order ticket, the extension fills these values automatically.
+2. Review the equity and leverage cards. Until TradingView supplies values, the panel uses its initial $10,000 equity and 3x leverage.
+3. Select 0.25%, 0.5% (default), 1%, or 2% risk above the ATR controls. Selecting 2% shows a high-risk warning.
+4. Review the entry and stop-loss prices under Position Details. Set manual prices in the TradingView order ticket.
 5. Review the calculated position quantity, nominal size, required margin, and projected stop-loss amount.
 6. Select **Apply Position** to copy the calculated quantity into TradingView's quantity field.
 
@@ -77,14 +77,14 @@ The extension does not submit an order. Review every value in TradingView before
 
 ## ATR stop loss
 
-Add one ATR indicator to the active TradingView chart and keep its legend value visible. ATR mode enables automatically when the order ticket opens or its symbol/direction changes. Select **1x**, **2x**, **3x**, or **4x** (default: 1x). The header shows **Use ATR for Stop** on the left and the current ATR value on the right, including when ATR mode is off.
+Add one ATR indicator to the active TradingView chart and keep its legend value visible. Turn on **Use ATR for Stop** to enable ATR for the current ticket. Select **1x**, **2x**, **3x**, or **4x** (default: 1x). The header shows **Use ATR for Stop** on the left and the current ATR value on the right, including when ATR mode is off.
 
 - Direction comes from the active Buy/Sell control in TradingView's order ticket. Buy subtracts ATR distance from entry; Sell adds it. No calculation is made when direction cannot be detected.
-- Choosing an ATR option fills the order ticket's stop-loss price and enables its stop-loss switch if needed. Changing entry or the page's Buy/Sell direction also recalculates and fills the stop while ATR mode is enabled.
+- Choosing an ATR option fills the order ticket's stop-loss price and enables its stop-loss switch if needed. Changing entry also recalculates and fills the stop while ATR mode is enabled.
 - Live ATR changes update the displayed ATR without moving the stop. Click the selected multiplier again to apply the latest displayed value.
-- Editing the stop manually in either the panel or the order ticket unchecks ATR mode. Panel edits are copied to the ticket; ticket edits update the panel and position sizing.
+- Editing the stop manually in the order ticket unchecks ATR mode and updates Position Details and sizing.
 - **Stop Loss Distance** appears in the summary as percentage and absolute price distance.
-- Leverage is read automatically from the order ticket's leverage button when available; manual entry remains available when detection fails.
+- Leverage is read automatically from the order ticket's leverage button when available.
 - The reader uses the displayed legend value, which can follow the crosshair over historical candles. Move the pointer off historical candles before applying ATR.
 - Missing or ambiguous ATR data clears a requested calculation while waiting for a valid value. Multiple charts require a detectable active chart, and multiple ATR studies are unsupported.
 - Stop-loss writing expects the ticket field to be in absolute-price mode, as shown by its price value. Review the ticket's field mode and resulting value.
@@ -100,7 +100,7 @@ Records persist locally and reset on the next polling cycle after the local cale
 
 The existing maximum daily-loss limit still counts the sum of losing entries. Profitable entries change the displayed net profit but do not offset losses for this limit.
 
-ATR auto-enable detects the visible ticket opening/reopening or a change of symbol/direction. It does not detect a submitted trade that leaves the same ticket continuously open. Manual stop edits keep ATR off within the same setup.
+Closing or reopening the detected ticket, switching symbol, or changing direction turns ATR off and cancels pending stop updates.
 
 ## Privacy
 
@@ -127,9 +127,13 @@ https://*.tradingview.com/*
 .
 ├── manifest.json   # Manifest V3 extension configuration
 ├── content.js      # Panel UI, TradingView integration, and risk calculations
-├── livermore.jpg   # Image displayed in the panel
+├── idol/           # idols.json and its images
 └── LICENSE         # MIT License
 ```
+
+## Idol panel
+
+Copy `idol/idols.example.json` to `idol/idols.json` for a local override. Edit your copy to add a name, an imagePath relative to the idol folder, and a famousSaying for each entry. The panel picks one entry at random on page load. An empty saying displays the name.
 
 ## Development
 
