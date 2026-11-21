@@ -29,7 +29,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "livermore.jpg"
+        "idol/*"
       ],
       "matches": [
         "https://*.tradingview.com/*"

@@ -22,11 +22,12 @@
   }
 
   // 1. State Configuration
+  const dailyLossLimitPercent = 3;
   let state = {
     assetName: 'CONNECTING...',
     accountEquity: 10000, 
     leverage: 3,
-    riskPercent: 1,
+    riskPercent: 0.5,
     entryPrice: 0,          
     stopLossPrice: 0,       
     stopLossPercent: 0,     
@@ -37,7 +38,6 @@
     atrValue: null,
     atrPending: false,
     ticketDirection: null,
-    dailyLossLimitPercent: 3, 
     currentDailyLossUSD: 0,
     dailyProfitUSD: 0,
     lossRecords: [] 
@@ -97,6 +97,7 @@
     .atr-options { display: flex; gap: 6px; margin: 8px 0; }
     .atr-options button { font-size: 16px; font-weight: 600; flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
     .atr-options button[aria-pressed="true"] { border-color: #2962ff; background: #2962ff33; color: #fff; }
+    .risk-options button[data-risk="2"][aria-pressed="true"] { background: #db5c66; border-color: #db5c66; color: #171717; }
     .atr-status { font-size: 12px; color: #b2b5be; line-height: 1.4; }
     .result-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin: 12px 0 8px; }
     .result-card { min-width: 0; background: #1c2434; border: 1px solid #30384a; border-radius: 7px; padding: 11px 10px; }
@@ -145,12 +146,25 @@
   const panelEl7 = addPanelElement(panelEl5, "button", {"class": "window-icon-btn", "id": "widget-minimize-trigger", "title": "Minimize Window"});
   const panelEl8 = addPanelElement(panelEl7, "svg", {"viewBox": "0 0 24 24"});
   const panelEl9 = addPanelElement(panelEl8, "path", {"d": "M19 13H5v-2h14v2z"});
-  const panelEl10 = addPanelElement(panelEl4, "div", {"class": "idol-quote-section"});
-  const panelEl11 = addPanelElement(panelEl10, "div", {"class": "idol-avatar-box"});
-  const panelEl12 = addPanelElement(panelEl11, "img", {"src": "", "alt": "Avatar"});
-  const panelEl13 = addPanelElement(panelEl10, "div", {"class": "idol-text-box"});
-  const panelEl14 = addPanelElement(panelEl13, "span", {"class": "idol-quote-content"});
-  panelEl14.appendChild(document.createTextNode("\"It never was my thinking that made the big money for me. It always was my sitting.\""));
+  const idolSection = addPanelElement(panelEl4, 'div');
+  async function loadIdol() {
+    const folder = extRuntime.getURL('idol/');
+    const response = await fetch(new URL('idols.json', folder));
+    if (!response.ok) throw new Error('Could not load idols.json');
+    const entries = await response.json();
+    const idols = entries.filter(entry => entry && typeof entry.name === 'string' &&
+      typeof entry.imagePath === 'string' && entry.imagePath.trim() && typeof entry.famousSaying === 'string');
+    if (!idols.length) return;
+    const idol = idols[Math.floor(Math.random() * idols.length)];
+    const imageURL = new URL(idol.imagePath, folder);
+    if (!imageURL.href.startsWith(folder)) return;
+    idolSection.className = 'idol-quote-section';
+    const avatar = addPanelElement(idolSection, 'div', { class: 'idol-avatar-box' });
+    addPanelElement(avatar, 'img', { src: imageURL.href, alt: idol.name });
+    const caption = addPanelElement(idolSection, 'div', { class: 'idol-text-box' });
+    addPanelElement(caption, 'span', { class: 'idol-quote-content' }, idol.famousSaying || idol.name);
+  }
+  loadIdol().catch(error => console.warn('Position Manager idol panel:', error));
   const panelEl17 = addPanelElement(panelEl4, "div", {"class": "tracker-block"});
   const panelEl18 = addPanelElement(panelEl17, "div", {"class": "tracker-flex"});
   const panelEl19 = addPanelElement(panelEl18, "div", {});
@@ -158,6 +172,7 @@
   panelEl20.appendChild(document.createTextNode("Daily Profit:"));
   const panelEl21 = addPanelElement(panelEl19, "span", {"id": "loss-display", "style": "font-weight: bold; color: #ffffff;"});
   panelEl21.appendChild(document.createTextNode("$0.00"));
+  addPanelElement(panelEl19, 'span', { class: 'atr-status' }, ` (Max DD: ${dailyLossLimitPercent}%)`);
   const panelEl22 = addPanelElement(panelEl18, "button", {"class": "action-icon-btn", "id": "clear-all-btn", "title": "Clear All Log Entries"});
   const panelEl23 = addPanelElement(panelEl22, "svg", {"viewBox": "0 0 24 24"});
   const panelEl24 = addPanelElement(panelEl23, "path", {"d": "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"});
@@ -179,15 +194,6 @@
   const panelEl36 = addPanelElement(panelEl35, "label", {});
   panelEl36.appendChild(document.createTextNode("Leverage"));
   const panelEl37 = addPanelElement(panelEl35, "input", {"type": "number", "id": "lev", "value": ""});
-  const panelEl38 = addPanelElement(panelEl4, "div", {"class": "grid"});
-  const panelEl39 = addPanelElement(panelEl38, "div", {});
-  const panelEl40 = addPanelElement(panelEl39, "label", {});
-  panelEl40.appendChild(document.createTextNode("Risk (%)"));
-  const panelEl41 = addPanelElement(panelEl39, "input", {"type": "number", "id": "rsk", "step": "0.1", "value": ""});
-  const panelEl42 = addPanelElement(panelEl38, "div", {});
-  const panelEl43 = addPanelElement(panelEl42, "label", {});
-  panelEl43.appendChild(document.createTextNode("MAX DD (%)"));
-  const panelEl44 = addPanelElement(panelEl42, "input", {"type": "number", "id": "loss-cap", "step": "0.5", "value": ""});
   const panelEl45 = addPanelElement(panelEl4, "div", {"class": "grid"});
   const panelEl46 = addPanelElement(panelEl45, "div", {});
   const panelEl47 = addPanelElement(panelEl46, "label", {});
@@ -197,6 +203,23 @@
   const panelEl50 = addPanelElement(panelEl49, "label", {});
   panelEl50.appendChild(document.createTextNode("Stop Loss Price"));
   const panelEl51 = addPanelElement(panelEl49, "input", {"type": "number", "id": "sl-price", "step": "0.00001", "placeholder": "Type SL..."});
+  const riskBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
+  addPanelElement(riskBlock, 'div', {}, 'Risk per trade');
+  const riskOptions = addPanelElement(riskBlock, 'div', { class: 'atr-options risk-options', role: 'group', 'aria-label': 'Risk per trade' });
+  const riskWarning = addPanelElement(riskBlock, 'span', { role: 'status' });
+  const riskButtons = [0.25, 0.5, 1, 2].map(percent => {
+    const button = addPanelElement(riskOptions, 'button', {
+      type: 'button', 'aria-pressed': String(percent === state.riskPercent),
+      'data-risk': String(percent)
+    }, `${percent}%`);
+    button.addEventListener('click', () => {
+      state.riskPercent = percent;
+      for (const option of riskButtons) option.setAttribute('aria-pressed', String(option === button));
+      riskWarning.textContent = percent === 2 ? 'High risk' : '';
+      calculateRiskSystem();
+    });
+    return button;
+  });
   const atrBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
   const atrHeader = addPanelElement(atrBlock, 'div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 8px;' });
   const atrLabel = addPanelElement(atrHeader, 'label', { class: 'atr-toggle', style: 'margin-bottom: 0;' });
@@ -252,11 +275,8 @@
   panelEl72.appendChild(document.createTextNode("⚠️ EXCEEDS RISK LIMITS!"));
 
   shadowRoot.getElementById('drag-handle').textContent = state.assetName;
-  shadowRoot.querySelector('.idol-avatar-box img').src = extRuntime.getURL('livermore.jpg');
   shadowRoot.getElementById('eq').value = state.accountEquity;
   shadowRoot.getElementById('lev').value = state.leverage;
-  shadowRoot.getElementById('rsk').value = state.riskPercent;
-  shadowRoot.getElementById('loss-cap').value = state.dailyLossLimitPercent;
 
   // UI Element Cache
   const panelMain = shadowRoot.getElementById('main-widget-panel');
@@ -426,7 +446,7 @@
     }
 
     const dollarRisk = state.accountEquity * (state.riskPercent / 100);
-    const maxDDRiskUSD = state.accountEquity * (state.dailyLossLimitPercent / 100);
+    const maxDDRiskUSD = state.accountEquity * (dailyLossLimitPercent / 100);
     const slDecimal = state.stopLossPercent / 100;
     
     let nominalSize = slDecimal > 0 ? dollarRisk / slDecimal : 0;
@@ -574,8 +594,6 @@
 
   bindInput('eq', 'accountEquity');
   bindInput('lev', 'leverage');
-  bindInput('rsk', 'riskPercent');
-  bindInput('loss-cap', 'dailyLossLimitPercent');
   
   inputEntryPrice.addEventListener('input', (e) => {
     state.entryPrice = Number(e.target.value);

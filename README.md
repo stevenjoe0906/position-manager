@@ -12,7 +12,7 @@ The extension is designed to make position sizing deliberate and consistent befo
 - Reads the current symbol, market price, account equity, limit or stop entry price, and stop-loss price from TradingView when available
 - Applies the calculated quantity to TradingView's quantity field
 - Records signed realized profit/loss and trade direction for the current day in browser local storage
-- Enforces a configurable maximum daily drawdown
+- Enforces a fixed 3% daily loss limit
 - Disables position application when:
   - the daily loss limit has been reached, or
   - the required margin exceeds account equity
@@ -68,7 +68,7 @@ Firefox removes temporary extensions when the browser closes, so you must load i
 
 1. Open a TradingView chart and its order ticket.
 2. Confirm or enter your account equity and leverage.
-3. Set your desired risk percentage and maximum daily drawdown.
+3. Select 0.25%, 0.5% (default), 1%, or 2% risk above the ATR controls. Selecting 2% shows a high-risk warning.
 4. Enter an entry price and stop-loss price. When supported by the current TradingView order ticket, the extension fills these values automatically.
 5. Review the calculated position quantity, nominal size, required margin, and projected stop-loss amount.
 6. Select **Apply Position** to copy the calculated quantity into TradingView's quantity field.
@@ -127,9 +127,13 @@ https://*.tradingview.com/*
 .
 ├── manifest.json   # Manifest V3 extension configuration
 ├── content.js      # Panel UI, TradingView integration, and risk calculations
-├── livermore.jpg   # Image displayed in the panel
+├── idol/           # idols.json and its images
 └── LICENSE         # MIT License
 ```
+
+## Idol panel
+
+Edit `idol/idols.json` to add a name, an imagePath relative to the idol folder, and a famousSaying for each entry. The panel picks one entry at random on page load. An empty saying displays the name.
 
 ## Development
 
