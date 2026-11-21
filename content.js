@@ -243,9 +243,9 @@
   const equityFormat = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const riskBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
   const riskHeading = addPanelElement(riskBlock, 'div', { class: 'risk-heading' });
-  addPanelElement(riskHeading, 'span', { class: 'section-title' }, 'Risk per trade');
+  addPanelElement(riskHeading, 'span', { class: 'section-title' }, 'Risk Per Trade');
   const riskWarning = addPanelElement(riskHeading, 'strong', { role: 'status' });
-  const riskOptions = addPanelElement(riskBlock, 'div', { class: 'atr-options risk-options', role: 'group', 'aria-label': 'Risk per trade' });
+  const riskOptions = addPanelElement(riskBlock, 'div', { class: 'atr-options risk-options', role: 'group', 'aria-label': 'Risk Per Trade' });
   const riskButtons = [0.25, 0.5, 1, 2].map(percent => {
     const button = addPanelElement(riskOptions, 'button', {
       type: 'button', 'aria-pressed': String(percent === state.riskPercent)
