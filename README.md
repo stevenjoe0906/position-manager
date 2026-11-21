@@ -133,7 +133,7 @@ https://*.tradingview.com/*
 
 ## Idol panel
 
-Edit `idol/idols.json` to add a name, an imagePath relative to the idol folder, and a famousSaying for each entry. The panel picks one entry at random on page load. An empty saying displays the name.
+Copy `idol/idols.example.json` to `idol/idols.json` for a local override. Edit your copy to add a name, an imagePath relative to the idol folder, and a famousSaying for each entry. The panel picks one entry at random on page load. An empty saying displays the name.
 
 ## Development
 

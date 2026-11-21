@@ -160,8 +160,9 @@
   const idolSection = addPanelElement(panelEl4, 'div');
   async function loadIdol() {
     const folder = extRuntime.getURL('idol/');
-    const response = await fetch(new URL('idols.json', folder));
-    if (!response.ok) throw new Error('Could not load idols.json');
+    let response = await fetch(new URL('idols.json', folder)).catch(() => null);
+    if (!response?.ok) response = await fetch(new URL('idols.example.json', folder));
+    if (!response.ok) throw new Error('Could not load idol configuration');
     const entries = await response.json();
     const idols = entries.filter(entry => entry && typeof entry.name === 'string' &&
       typeof entry.imagePath === 'string' && entry.imagePath.trim() && typeof entry.famousSaying === 'string');
