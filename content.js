@@ -97,7 +97,16 @@
     .atr-options { display: flex; gap: 6px; margin: 8px 0; }
     .atr-options button { font-size: 16px; font-weight: 600; flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
     .atr-options button[aria-pressed="true"] { border-color: #2962ff; background: #2962ff33; color: #fff; }
-    .risk-options button[data-risk="2"][aria-pressed="true"] { background: #db5c66; border-color: #db5c66; color: #171717; }
+    .tracker-block.high-risk { background: #db5c66; color: #171717; }
+    .high-risk .atr-options button[aria-pressed="true"] { background: #244aac; }
+    .risk-heading, .position-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .position-heading { font-size: 26px; }
+    .position-heading > div { font-size: inherit; margin: 0; }
+    .position-heading .output-val { min-width: 0; overflow-wrap: anywhere; text-align: right; }
+    .account-cards.result-cards { margin: 0 0 8px; }
+    .account-cards .result-card { padding: 5px 9px; }
+    .account-cards .result-card-label { margin-bottom: 1px; }
+    .position-details output:empty::after { content: '—'; }
     .atr-status { font-size: 12px; color: #b2b5be; line-height: 1.4; }
     .result-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin: 12px 0 8px; }
     .result-card { min-width: 0; background: #1c2434; border: 1px solid #30384a; border-radius: 7px; padding: 11px 10px; }
@@ -185,37 +194,29 @@
   const panelEl28 = addPanelElement(panelEl27, "svg", {"viewBox": "0 0 24 24"});
   const panelEl29 = addPanelElement(panelEl28, "path", {"d": "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"});
   const panelEl30 = addPanelElement(panelEl17, "div", {"class": "loss-log-list", "id": "loss-log-list"});
-  const panelEl31 = addPanelElement(panelEl4, "div", {"class": "grid"});
-  const panelEl32 = addPanelElement(panelEl31, "div", {});
-  const panelEl33 = addPanelElement(panelEl32, "label", {});
-  panelEl33.appendChild(document.createTextNode("Equity ($)"));
-  const panelEl34 = addPanelElement(panelEl32, "input", {"type": "number", "id": "eq", "value": ""});
-  const panelEl35 = addPanelElement(panelEl31, "div", {});
-  const panelEl36 = addPanelElement(panelEl35, "label", {});
-  panelEl36.appendChild(document.createTextNode("Leverage"));
-  const panelEl37 = addPanelElement(panelEl35, "input", {"type": "number", "id": "lev", "value": ""});
-  const panelEl45 = addPanelElement(panelEl4, "div", {"class": "grid"});
-  const panelEl46 = addPanelElement(panelEl45, "div", {});
-  const panelEl47 = addPanelElement(panelEl46, "label", {});
-  panelEl47.appendChild(document.createTextNode("Entry Price"));
-  const panelEl48 = addPanelElement(panelEl46, "input", {"type": "number", "id": "entry-price", "step": "0.00001", "placeholder": "Type Entry..."});
-  const panelEl49 = addPanelElement(panelEl45, "div", {});
-  const panelEl50 = addPanelElement(panelEl49, "label", {});
-  panelEl50.appendChild(document.createTextNode("Stop Loss Price"));
-  const panelEl51 = addPanelElement(panelEl49, "input", {"type": "number", "id": "sl-price", "step": "0.00001", "placeholder": "Type SL..."});
+  const accountCards = addPanelElement(panelEl4, 'div', { class: 'result-cards account-cards' });
+  function accountMetric(label) {
+    const card = addPanelElement(accountCards, 'div', { class: 'result-card' });
+    addPanelElement(card, 'div', { class: 'result-card-label' }, label);
+    return addPanelElement(card, 'div', { class: 'result-card-value' });
+  }
+  const equityDisplay = accountMetric('Equity');
+  const leverageDisplay = accountMetric('Leverage');
+  const equityFormat = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const riskBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
-  addPanelElement(riskBlock, 'div', {}, 'Risk per trade');
+  const riskHeading = addPanelElement(riskBlock, 'div', { class: 'risk-heading' });
+  addPanelElement(riskHeading, 'span', {}, 'Risk Per Trade');
+  const riskWarning = addPanelElement(riskHeading, 'strong', { role: 'status' });
   const riskOptions = addPanelElement(riskBlock, 'div', { class: 'atr-options risk-options', role: 'group', 'aria-label': 'Risk per trade' });
-  const riskWarning = addPanelElement(riskBlock, 'span', { role: 'status' });
   const riskButtons = [0.25, 0.5, 1, 2].map(percent => {
     const button = addPanelElement(riskOptions, 'button', {
-      type: 'button', 'aria-pressed': String(percent === state.riskPercent),
-      'data-risk': String(percent)
+      type: 'button', 'aria-pressed': String(percent === state.riskPercent)
     }, `${percent}%`);
     button.addEventListener('click', () => {
       state.riskPercent = percent;
       for (const option of riskButtons) option.setAttribute('aria-pressed', String(option === button));
-      riskWarning.textContent = percent === 2 ? 'High risk' : '';
+      riskBlock.classList.toggle('high-risk', percent === 2);
+      riskWarning.textContent = percent === 2 ? 'High Risk' : '';
       calculateRiskSystem();
     });
     return button;
@@ -237,10 +238,9 @@
     return button;
   });
   const panelEl56 = addPanelElement(panelEl4, "div", {"class": "output-area"});
-  const panelEl57 = addPanelElement(panelEl56, "div", {"class": "output-lbl"});
-  panelEl57.appendChild(document.createTextNode("Amount (Tokens / Units)"));
-  const panelEl58 = addPanelElement(panelEl56, "div", {"class": "output-val", "id": "amount-display"});
-  panelEl58.appendChild(document.createTextNode("0.00"));
+  const positionHeading = addPanelElement(panelEl56, 'div', { class: 'position-heading' });
+  addPanelElement(positionHeading, 'div', { class: 'output-lbl' }, 'POSITION');
+  addPanelElement(positionHeading, 'div', { class: 'output-val', id: 'amount-display' }, '0.00');
   const resultCards = addPanelElement(panelEl56, 'div', { class: 'result-cards' });
   const riskCard = addPanelElement(resultCards, 'div', { class: 'result-card' });
   addPanelElement(riskCard, 'div', { class: 'result-card-label' }, 'Stop Loss');
@@ -263,6 +263,13 @@
   const elTakerFee = addPanelElement(elEstimatedFee, 'span', { class: 'fee-taker' }, '-$0');
   const details = addPanelElement(panelEl56, 'details', { class: 'position-details' });
   addPanelElement(details, 'summary', {}, 'Position Details');
+  function detailPrice(label) {
+    const row = addPanelElement(details, 'div', { class: 'aux-container' });
+    addPanelElement(row, 'span', {}, label);
+    return addPanelElement(row, 'output', { class: 'aux-val', 'aria-label': label, 'aria-live': 'off' });
+  }
+  const entryDisplay = detailPrice('Entry Price');
+  const stopDisplay = detailPrice('Stop Loss Price');
   const nominalRow = addPanelElement(details, 'div', { class: 'aux-container' });
   addPanelElement(nominalRow, 'span', {}, 'Nominal Position Size:');
   addPanelElement(nominalRow, 'span', { class: 'aux-val', id: 'nominal-display' }, '$0.00');
@@ -275,8 +282,8 @@
   panelEl72.appendChild(document.createTextNode("⚠️ EXCEEDS RISK LIMITS!"));
 
   shadowRoot.getElementById('drag-handle').textContent = state.assetName;
-  shadowRoot.getElementById('eq').value = state.accountEquity;
-  shadowRoot.getElementById('lev').value = state.leverage;
+  equityDisplay.textContent = equityFormat.format(state.accountEquity);
+  leverageDisplay.textContent = `${state.leverage}x`;
 
   // UI Element Cache
   const panelMain = shadowRoot.getElementById('main-widget-panel');
@@ -291,10 +298,7 @@
   const elSLMoney = shadowRoot.getElementById('sl-money-display');
   const btnApply = shadowRoot.getElementById('apply-btn');
   const elWarn = shadowRoot.getElementById('warn-banner');
-  const inputEquity = shadowRoot.getElementById('eq');
   const inputSLDistance = shadowRoot.getElementById('sl-distance');
-  const inputEntryPrice = shadowRoot.getElementById('entry-price');
-  const inputSLPrice = shadowRoot.getElementById('sl-price');
   const elLossDisplay = shadowRoot.getElementById('loss-display');
   const inputLossAdder = shadowRoot.getElementById('loss-adder');
   const btnAddLoss = shadowRoot.getElementById('add-loss-btn');
@@ -585,29 +589,6 @@
     }
   });
 
-  const bindInput = (id, stateKey) => {
-    shadowRoot.getElementById(id).addEventListener('input', (e) => {
-      state[stateKey] = Number(e.target.value);
-      calculateRiskSystem();
-    });
-  };
-
-  bindInput('eq', 'accountEquity');
-  bindInput('lev', 'leverage');
-  
-  inputEntryPrice.addEventListener('input', (e) => {
-    state.entryPrice = Number(e.target.value);
-    if (state.useATR) requestATRStop();
-    calculateRiskSystem();
-  });
-
-  inputSLPrice.addEventListener('input', (e) => {
-    state.stopLossPrice = Number(e.target.value);
-    disableATR();
-    queueTicketStop(state.stopLossPrice);
-    calculateRiskSystem();
-  });
-
   // Explicit Manual Injection Event Listener
   btnApply.addEventListener('click', () => {
     const val = btnApply.getAttribute('data-amount') || '0';
@@ -694,7 +675,7 @@
     lastTicketStopValue = input.value;
     disableATR();
     state.stopLossPrice = cleanAndParseFloat(input.value);
-    inputSLPrice.value = input.value === '' ? '' : state.stopLossPrice;
+    stopDisplay.value = input.value === '' ? '' : state.stopLossPrice;
     calculateRiskSystem();
   }
 
@@ -763,14 +744,14 @@
 
   function applyATRStop() {
     if (!state.useATR || !state.atrPending || state.atrValue === null) return;
-    if (shadowRoot.activeElement === inputSLPrice || !state.ticketDirection) return;
+    if (!state.ticketDirection) return;
     state.direction = state.ticketDirection;
     const stop = state.entryPrice + (state.direction === 'SHORT' ? 1 : -1) * state.atrMultiplier * state.atrValue;
     state.stopLossPrice = state.entryPrice > 0 && Number.isFinite(stop) && stop > 0
       ? Number(stop.toPrecision(12)) : 0;
     // Reject a distance lost to floating-point rounding.
     if (state.stopLossPrice === state.entryPrice) state.stopLossPrice = 0;
-    inputSLPrice.value = state.stopLossPrice || '';
+    stopDisplay.value = state.stopLossPrice || '';
     state.atrPending = false;
     queueTicketStop(state.stopLossPrice);
   }
@@ -782,7 +763,7 @@
     state.atrPending = true;
     // Do not keep sizing from a previous entry's stop while waiting for ATR.
     state.stopLossPrice = 0;
-    inputSLPrice.value = '';
+    stopDisplay.value = '';
     applyATRStop();
     updateATRControls();
     calculateRiskSystem();
@@ -905,9 +886,7 @@
 
     if (parsedEquity > 0 && state.accountEquity !== parsedEquity) {
       state.accountEquity = parsedEquity;
-      if (shadowRoot.activeElement !== inputEquity) {
-        inputEquity.value = Math.round(parsedEquity);
-      }
+      equityDisplay.textContent = equityFormat.format(parsedEquity);
     }
 
     observeTicketStop();
@@ -917,9 +896,7 @@
     const leverage = readTicketLeverage();
     if (leverage !== null) {
       state.leverage = leverage;
-      if (shadowRoot.activeElement !== shadowRoot.getElementById('lev')) {
-        shadowRoot.getElementById('lev').value = leverage;
-      }
+      leverageDisplay.textContent = `${leverage}x`;
     }
     flushTicketStop();
 
@@ -939,16 +916,16 @@
       autoSLPrice = cleanAndParseFloat(slInputDom.value);
     }
 
-    if (autoEntryPrice > 0 && shadowRoot.activeElement !== inputEntryPrice) {
+    if (autoEntryPrice > 0) {
       const entryChanged = state.entryPrice !== autoEntryPrice;
       state.entryPrice = autoEntryPrice;
-      inputEntryPrice.value = autoEntryPrice;
+      entryDisplay.value = autoEntryPrice;
       if (state.useATR && entryChanged) requestATRStop();
     }
 
-    if (!state.useATR && !pendingTicketStop && autoSLPrice > 0 && shadowRoot.activeElement !== inputSLPrice) {
+    if (!state.useATR && !pendingTicketStop && autoSLPrice > 0) {
       state.stopLossPrice = autoSLPrice;
-      inputSLPrice.value = autoSLPrice;
+      stopDisplay.value = autoSLPrice;
     }
 
     syncTradeSession(ticketDirection, state.assetName);

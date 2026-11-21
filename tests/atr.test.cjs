@@ -6,7 +6,7 @@ const source = fs.readFileSync(require('node:path').join(__dirname, '../content.
 function setup() {
   const context = vm.createContext({
     state: { useATR: true, atrPending: true, entryPrice: 1000, direction: 'LONG', ticketDirection: 'LONG', atrMultiplier: 1, atrValue: 10 },
-    shadowRoot: { activeElement: null }, inputSLPrice: { value: '' },
+    shadowRoot: { activeElement: null }, stopDisplay: { value: '' },
     document: { querySelectorAll: () => [] }, queueTicketStop: () => {}
   });
   vm.runInContext(source.slice(source.indexOf('  function readChartATR()'), source.indexOf('  function updateATRControls()')), context);
@@ -25,13 +25,12 @@ test('polling preserves manual stop and consumes pending update only once', () =
   c.applyATRStop(); assert.equal(c.state.stopLossPrice, 975);
   c.state.entryPrice = 2000; c.state.atrPending = true; c.applyATRStop(); assert.equal(c.state.stopLossPrice, 1980);
 });
-test('missing ATR and focused manual input defer pending calculation', () => {
+test('missing ATR defers pending calculation', () => {
   const c = setup(); c.state.atrValue = null; c.applyATRStop(); assert.equal(c.state.atrPending, true);
-  c.state.atrValue = 10; c.shadowRoot.activeElement = c.inputSLPrice; c.applyATRStop(); assert.equal(c.state.atrPending, true);
-  c.shadowRoot.activeElement = null; c.applyATRStop(); assert.equal(c.state.stopLossPrice, 990);
+  c.state.atrValue = 10; c.applyATRStop(); assert.equal(c.state.stopLossPrice, 990);
 });
 test('invalid and nonpositive stops clear the output', () => {
-  for (const entry of [0, -1, Infinity, 5]) { const c = setup(); c.state.entryPrice = entry; c.applyATRStop(); assert.equal(c.inputSLPrice.value, ''); }
+  for (const entry of [0, -1, Infinity, 5]) { const c = setup(); c.state.entryPrice = entry; c.applyATRStop(); assert.equal(c.stopDisplay.value, ''); }
 });
 function row(title, value, visible = true) {
   return { getClientRects: () => visible ? [1] : [], querySelector: () => ({textContent: title}), querySelectorAll: () => [{textContent: value, getClientRects: () => visible ? [1] : []}] };
@@ -82,7 +81,7 @@ function ticketSetup() {
   const nodes = {};
   const c = vm.createContext({
     state: {useATR: true, atrPending: true}, inputUseATR: {checked: true},
-    inputSLPrice: {value: ''}, updateATRControls() {}, calculateRiskSystem() {},
+    stopDisplay: {value: ''}, updateATRControls() {}, calculateRiskSystem() {},
     cleanAndParseFloat: value => Number(value) || 0,
     console, nodes, listeners: {},
     document: {
@@ -134,13 +133,13 @@ test('delayed input mount is retried and manual page edit cancels pending write'
   c.queueTicketStop(980);
   input.value = '975'; c.onInput({target: input});
   assert.equal(c.state.useATR, false); assert.equal(c.inputUseATR.checked, false);
-  assert.equal(c.inputSLPrice.value, 975);
+  assert.equal(c.stopDisplay.value, 975);
   c.nodes['input[data-qa-id~="order-ticket-stop-loss-input"]'] = input;
   c.flushTicketStop(); assert.equal(input.value, '975');
 });
 test('unknown ticket direction never calculates an ATR stop', () => {
   const c = setup(); c.state.ticketDirection = null;
-  c.applyATRStop(); assert.equal(c.inputSLPrice.value, '');
+  c.applyATRStop(); assert.equal(c.stopDisplay.value, '');
 });
 
 test('ticket listeners capture both input and change before page handlers', () => {
@@ -149,7 +148,7 @@ test('ticket listeners capture both input and change before page handlers', () =
   assert.equal(c.listeners.change.capture, true);
   const input = {value: '950', matches: () => true};
   c.listeners.change.callback({target: input});
-  assert.equal(c.inputSLPrice.value, 950);
+  assert.equal(c.stopDisplay.value, 950);
   assert.equal(c.inputUseATR.checked, false);
 });
 test('silent page stop changes and clearing stop disable ATR via polling', () => {
@@ -158,8 +157,8 @@ test('silent page stop changes and clearing stop disable ATR via polling', () =>
   c.nodes['input[data-qa-id~="order-ticket-stop-loss-input"]'] = input;
   c.observeTicketStop(); assert.equal(c.state.useATR, true);
   input.value = '960'; c.observeTicketStop();
-  assert.equal(c.state.useATR, false); assert.equal(c.inputSLPrice.value, 960);
-  input.value = ''; c.observeTicketStop(); assert.equal(c.inputSLPrice.value, '');
+  assert.equal(c.state.useATR, false); assert.equal(c.stopDisplay.value, 960);
+  input.value = ''; c.observeTicketStop(); assert.equal(c.stopDisplay.value, '');
 });
 test('polling ignores extension writes and detects edits after input remount', () => {
   const c = ticketSetup();
@@ -168,7 +167,7 @@ test('polling ignores extension writes and detects edits after input remount', (
   c.observeTicketStop(); c.queueTicketStop(990); c.observeTicketStop();
   assert.equal(c.state.useATR, true);
   c.nodes['input[data-qa-id~="order-ticket-stop-loss-input"]'] = {value: '970'};
-  c.observeTicketStop(); assert.equal(c.state.useATR, false); assert.equal(c.inputSLPrice.value, 970);
+  c.observeTicketStop(); assert.equal(c.state.useATR, false); assert.equal(c.stopDisplay.value, 970);
 });
 test('Apply button follows ticket direction and restores direction label after success', () => {
   const classes = new Set();
