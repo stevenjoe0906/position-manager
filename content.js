@@ -109,7 +109,7 @@
     .account-cards .result-card { background: #131722; padding: 5px 9px; }
     .account-cards .result-card-label { margin-bottom: 1px; }
     .position-details output:empty::after { content: '—'; }
-    .atr-status { font-size: 12px; color: #b2b5be; line-height: 1.4; }
+    .atr-options button:disabled { background: #252a35; border-color: #333946; color: #89909e; cursor: default; }\n    .atr-status { font-size: 12px; color: #b2b5be; line-height: 1.4; }
     .result-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin: 12px 0 8px; }
     .result-card { min-width: 0; background: #1c2434; border: 1px solid #30384a; border-radius: 7px; padding: 11px 10px; }
     .result-card-label { color: #9299aa; font-size: 11px; font-weight: 600; margin-bottom: 7px; }
@@ -229,11 +229,10 @@
   const atrLabel = addPanelElement(atrHeader, 'label', { class: 'atr-toggle', style: 'margin-bottom: 0;' });
   const inputUseATR = addPanelElement(atrLabel, 'input', { type: 'checkbox', id: 'use-atr' });
   addPanelElement(atrLabel, 'span', {}, 'Use ATR for Stop');
-  const atrControls = addPanelElement(atrBlock, 'div', { hidden: '' });
   const atrStatus = addPanelElement(atrHeader, 'span', { class: 'atr-status', role: 'status', 'aria-label': 'Current ATR', style: 'font-size: 14px; white-space: nowrap; text-align: right;' }, '—');
-  const atrMultipliers = addPanelElement(atrControls, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR multiplier' });
+  const atrMultipliers = addPanelElement(atrBlock, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR multiplier' });
   const atrMultiplierButtons = [1, 2, 3, 4].map(multiplier => {
-    const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': String(multiplier === 1) }, `${multiplier}x`);
+    const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': 'false', disabled: '' }, `${multiplier}x`);
     button.addEventListener('click', () => {
       state.atrMultiplier = multiplier;
       requestATRStop();
@@ -738,8 +737,10 @@
   }
 
   function updateATRControls() {
-    atrControls.hidden = !state.useATR;
-    atrMultiplierButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(state.atrMultiplier === [1, 2, 3, 4][index])));
+    atrMultiplierButtons.forEach((button, index) => {
+      button.disabled = !state.useATR;
+      button.setAttribute('aria-pressed', String(state.useATR && state.atrMultiplier === index + 1));
+    });
     atrStatus.textContent = state.atrValue === null
       ? '—'
       : String(state.atrValue);
