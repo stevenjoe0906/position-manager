@@ -109,16 +109,20 @@
     .position-heading + .result-cards { margin-top: 14px; }
     .account-cards.result-cards { margin: 0 0 8px; }
     .account-cards .result-card { background: #131722; padding: 5px 9px; }
-    .account-cards .result-card-label { margin-bottom: 1px; }
+    .section-title { color: #787b86; font-size: 14px; font-weight: bold; }
+    .high-risk .section-title { color: inherit; }
+    .account-cards .result-card-value { font-weight: normal; }
+    .account-cards .section-title { margin-bottom: 1px; }
     .position-details output:empty::after { content: '—'; }
     .result-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin: 12px 0 8px; }
     .result-card { min-width: 0; background: #1c2434; border: 1px solid #30384a; border-radius: 7px; padding: 11px 10px; }
-    .result-card-label { color: #9299aa; font-size: 11px; font-weight: 600; margin-bottom: 7px; }
+    .result-card-label { margin-bottom: 7px; }
     .result-card-value { color: #f4f6fb; font-size: 18px; font-weight: 750; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
     .result-card-value.risk { color: #ff5252; }
     .result-card-subtitle { margin-top: 6px; color: #9299aa; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
     .fee-card { background: #1c2434; border: 1px solid #30384a; border-radius: 12px; padding: 13px 11px; margin-bottom: 8px; }
-    .fee-card-heading { display: flex; justify-content: space-between; gap: 8px; align-items: center; color: #d1d4dc; font-size: 13px; font-weight: 500; }
+    .fee-card-heading { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .fee-card-heading, .result-card-label { color: #d1d4dc; font-size: 13px; font-weight: 500; }
     .fee-card-badge { background: #343d4f; border-radius: 16px; padding: 3px 9px; color: #d1d4dc; font-size: 12px; white-space: nowrap; }
     .fee-card-bottom { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
     .fee-values { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -210,7 +214,7 @@
   const panelEl17 = addPanelElement(panelEl4, "div", {"class": "tracker-block"});
   const panelEl18 = addPanelElement(panelEl17, "div", {"class": "tracker-flex"});
   const panelEl19 = addPanelElement(panelEl18, "div", {});
-  const panelEl20 = addPanelElement(panelEl19, "span", {"style": "color:#787b86; font-size: 14px; font-weight: bold; text-transform: uppercase; margin-right: 4px;"});
+  const panelEl20 = addPanelElement(panelEl19, "span", {"class": "section-title", "style": "margin-right: 4px;"});
   panelEl20.appendChild(document.createTextNode("Daily Profit:"));
   const panelEl21 = addPanelElement(panelEl19, "span", {"id": "loss-display", "style": "font-weight: bold; color: #ffffff;"});
   panelEl21.appendChild(document.createTextNode("$0.00"));
@@ -230,7 +234,7 @@
   const accountCards = addPanelElement(panelEl4, 'div', { class: 'result-cards account-cards' });
   function accountMetric(label) {
     const card = addPanelElement(accountCards, 'div', { class: 'result-card' });
-    addPanelElement(card, 'div', { class: 'result-card-label' }, label);
+    addPanelElement(card, 'div', { class: 'section-title' }, label);
     return addPanelElement(card, 'div', { class: 'result-card-value' });
   }
   const equityDisplay = accountMetric('Equity');
@@ -238,7 +242,7 @@
   const equityFormat = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const riskBlock = addPanelElement(panelEl4, 'div', { class: 'tracker-block' });
   const riskHeading = addPanelElement(riskBlock, 'div', { class: 'risk-heading' });
-  addPanelElement(riskHeading, 'span', {}, 'Risk Per Trade');
+  addPanelElement(riskHeading, 'span', { class: 'section-title' }, 'Risk per trade');
   const riskWarning = addPanelElement(riskHeading, 'strong', { role: 'status' });
   const riskOptions = addPanelElement(riskBlock, 'div', { class: 'atr-options risk-options', role: 'group', 'aria-label': 'Risk per trade' });
   const riskButtons = [0.25, 0.5, 1, 2].map(percent => {
