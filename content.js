@@ -94,7 +94,7 @@
     .apply-btn:disabled, .apply-btn:disabled:hover { background: #2a2e39; color: #787b86; }
     .idol-slider { display: grid; overflow: hidden; margin-bottom: 14px; border-radius: 6px; }
     .idol-slider > .idol-quote-section { grid-area: 1 / 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
-    .panel { --metric-font-size: 18px; }
+    .panel { --metric-font-size: 16px; }
     .atr-toggle { text-transform: none; display: flex; align-items: center; gap: 8px; }
     .atr-toggle input { width: auto; }
     .atr-options { display: flex; gap: 6px; margin: 8px 0; }
