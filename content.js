@@ -94,10 +94,12 @@
     .apply-btn:disabled, .apply-btn:disabled:hover { background: #2a2e39; color: #787b86; }
     .idol-slider { display: grid; overflow: hidden; margin-bottom: 14px; border-radius: 6px; }
     .idol-slider > .idol-quote-section { grid-area: 1 / 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+    .panel { --metric-font-size: 18px; }
+    .risk-heading .section-title, .account-cards .section-title, .atr-toggle, .atr-options button { font-size: var(--metric-font-size); }
     .atr-toggle { text-transform: none; display: flex; align-items: center; gap: 8px; }
     .atr-toggle input { width: auto; }
     .atr-options { display: flex; gap: 6px; margin: 8px 0; }
-    .atr-options button { font-size: 16px; font-weight: 600; flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
+    .atr-options button { font-weight: 600; flex: 1; padding: 7px; background: #131722; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 4px; cursor: pointer; }
     .atr-options button[aria-pressed="true"] { border-color: #2962ff; background: #2962ff33; color: #fff; }
     .tracker-block.high-risk { background: #db5c66; color: #171717; }
     .high-risk .atr-options button[aria-pressed="true"] { background: #244aac; }
@@ -117,7 +119,7 @@
     .result-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin: 12px 0 8px; }
     .result-card { min-width: 0; background: #1c2434; border: 1px solid #30384a; border-radius: 7px; padding: 11px 10px; }
     .result-card-label { margin-bottom: 7px; }
-    .result-card-value { color: #f4f6fb; font-size: 18px; font-weight: 750; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .result-card-value { color: #f4f6fb; font-size: var(--metric-font-size); font-weight: 750; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
     .result-card-value.risk { color: #ff5252; }
     .result-card-subtitle { margin-top: 6px; color: #9299aa; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
     .fee-card { background: #1c2434; border: 1px solid #30384a; border-radius: 12px; padding: 13px 11px; margin-bottom: 8px; }
@@ -263,7 +265,7 @@
   const atrLabel = addPanelElement(atrHeader, 'label', { class: 'atr-toggle', style: 'margin-bottom: 0;' });
   const inputUseATR = addPanelElement(atrLabel, 'input', { type: 'checkbox', id: 'use-atr' });
   addPanelElement(atrLabel, 'span', {}, 'Use ATR for Stop');
-  const atrStatus = addPanelElement(atrHeader, 'span', { class: 'atr-status', role: 'status', 'aria-label': 'Current ATR', style: 'font-size: 14px; white-space: nowrap; text-align: right;' }, '—');
+  const atrStatus = addPanelElement(atrHeader, 'span', { class: 'atr-status', role: 'status', 'aria-label': 'Current ATR', style: 'font-size: var(--metric-font-size); white-space: nowrap; text-align: right;' }, '—');
   const atrMultipliers = addPanelElement(atrBlock, 'div', { class: 'atr-options', role: 'group', 'aria-label': 'ATR multiplier' });
   const atrMultiplierButtons = [1, 2, 3, 4].map(multiplier => {
     const button = addPanelElement(atrMultipliers, 'button', { type: 'button', 'aria-pressed': 'false' }, `${multiplier}x`);
@@ -542,10 +544,11 @@
     const realLeverage = state.accountEquity > 0 ? nominalSize / state.accountEquity : 0;
     elRealLeverage.textContent = Number.isFinite(realLeverage) ? `${realLeverage.toFixed(2)}x` : '0.00x';
 
+    const marginPercent = state.accountEquity > 0 ? `${(requiredMargin / state.accountEquity * 100).toFixed(2)}%` : '—';
     elMargin.textContent = `$${requiredMargin.toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    })}`;
+    })} (${marginPercent})`;
 
     elMaxDDMoney.textContent = `-$${maxDDRiskUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     elSLMoney.textContent = `-$${projectedSLLossUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
