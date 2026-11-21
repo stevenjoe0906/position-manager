@@ -290,6 +290,8 @@
   addPanelElement(marginCard, 'div', { class: 'result-card-label' }, 'Margin Required');
   addPanelElement(marginCard, 'div', { class: 'result-card-value', id: 'margin-display' }, '$0.00');
   const leverageSubtitle = addPanelElement(marginCard, 'div', { class: 'result-card-subtitle' });
+  const elMarginUsage = addPanelElement(leverageSubtitle, 'span', {}, '0.00%');
+  leverageSubtitle.appendChild(document.createTextNode(' · '));
   const elRealLeverage = addPanelElement(leverageSubtitle, 'span', { id: 'real-leverage-display' }, '0.00x');
   const feeCard = addPanelElement(panelEl56, 'div', { class: 'fee-card', title: 'Estimated fee per side: maker 0.02%, taker 0.05%. Actual fees depend on execution.' });
   const feeHeading = addPanelElement(feeCard, 'div', { class: 'fee-card-heading' });
@@ -543,18 +545,20 @@
     const realLeverage = state.accountEquity > 0 ? nominalSize / state.accountEquity : 0;
     elRealLeverage.textContent = Number.isFinite(realLeverage) ? `${realLeverage.toFixed(2)}x` : '0.00x';
 
-    const marginPercent = state.accountEquity > 0 ? `${(requiredMargin / state.accountEquity * 100).toFixed(2)}%` : '—';
+    elMarginUsage.textContent = state.accountEquity > 0 ? `${(requiredMargin / state.accountEquity * 100).toFixed(2)}%` : '—';
     elMargin.textContent = `$${requiredMargin.toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    })} (${marginPercent})`;
+    })}`;
 
     elMaxDDMoney.textContent = `-$${maxDDRiskUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     elSLMoney.textContent = `-$${projectedSLLossUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     if (requiredMargin > (state.accountEquity * 0.5) && !isBlocked) {
+      elMarginUsage.style.color = '#ff9800';
       elMargin.style.color = '#ff9800'; 
     } else {
+      elMarginUsage.style.color = '';
       elMargin.style.color = '#ffffff';
     }
 
