@@ -100,13 +100,13 @@
     .tracker-block.high-risk { background: #db5c66; color: #171717; }
     .high-risk .atr-options button[aria-pressed="true"] { background: #244aac; }
     .risk-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-    .position-heading { display: flex; align-items: baseline; gap: 10px; font-size: 20px; line-height: 1.2; }
+    .position-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 20px; line-height: 1.2; }
     .position-heading > div { font-size: inherit; margin: 0; }
-    .position-heading .output-lbl { font-weight: 500; letter-spacing: 0.02em; }
-    .position-heading .output-val { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+    .position-heading .output-lbl { text-transform: none; font-weight: 500; letter-spacing: 0.02em; }
+    .position-heading .output-val { min-width: 0; overflow-wrap: anywhere; text-align: right; }
     .position-heading + .result-cards { margin-top: 8px; }
     .account-cards.result-cards { margin: 0 0 8px; }
-    .account-cards .result-card { padding: 5px 9px; }
+    .account-cards .result-card { background: #131722; padding: 5px 9px; }
     .account-cards .result-card-label { margin-bottom: 1px; }
     .position-details output:empty::after { content: '—'; }
     .atr-status { font-size: 12px; color: #b2b5be; line-height: 1.4; }
@@ -241,7 +241,7 @@
   });
   const panelEl56 = addPanelElement(panelEl4, "div", {"class": "output-area"});
   const positionHeading = addPanelElement(panelEl56, 'div', { class: 'position-heading' });
-  addPanelElement(positionHeading, 'div', { class: 'output-lbl' }, 'POSITION');
+  addPanelElement(positionHeading, 'div', { class: 'output-lbl' }, 'Position');
   addPanelElement(positionHeading, 'div', { class: 'output-val', id: 'amount-display' }, '0.00');
   const resultCards = addPanelElement(panelEl56, 'div', { class: 'result-cards' });
   const riskCard = addPanelElement(resultCards, 'div', { class: 'result-card' });
