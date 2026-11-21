@@ -92,6 +92,8 @@
     .apply-btn.short { background: #F23645; }
     .apply-btn.short:hover { background: #CE2432; }
     .apply-btn:disabled, .apply-btn:disabled:hover { background: #2a2e39; color: #787b86; }
+    .idol-slider { display: grid; overflow: hidden; margin-bottom: 14px; border-radius: 6px; }
+    .idol-slider > .idol-quote-section { grid-area: 1 / 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
     .atr-toggle { text-transform: none; display: flex; align-items: center; gap: 8px; }
     .atr-toggle input { width: auto; }
     .atr-options { display: flex; gap: 6px; margin: 8px 0; }
@@ -165,15 +167,44 @@
     const entries = await response.json();
     const idols = entries.filter(entry => entry && typeof entry.name === 'string' &&
       typeof entry.imagePath === 'string' && entry.imagePath.trim() && typeof entry.famousSaying === 'string');
-    if (!idols.length) return;
-    const idol = idols[Math.floor(Math.random() * idols.length)];
-    const imageURL = new URL(idol.imagePath, folder);
-    if (!imageURL.href.startsWith(folder)) return;
-    idolSection.className = 'idol-quote-section';
-    const avatar = addPanelElement(idolSection, 'div', { class: 'idol-avatar-box' });
-    addPanelElement(avatar, 'img', { src: imageURL.href, alt: idol.name });
-    const caption = addPanelElement(idolSection, 'div', { class: 'idol-text-box' });
-    addPanelElement(caption, 'span', { class: 'idol-quote-content' }, idol.famousSaying || idol.name);
+    const slides = [];
+    for (const idol of idols) {
+      let imageURL;
+      try { imageURL = new URL(idol.imagePath, folder); } catch { continue; }
+      if (!imageURL.href.startsWith(folder)) continue;
+      const slide = addPanelElement(idolSection, 'div', { class: 'idol-quote-section' });
+      const avatar = addPanelElement(slide, 'div', { class: 'idol-avatar-box' });
+      addPanelElement(avatar, 'img', { src: imageURL.href, alt: idol.name });
+      const caption = addPanelElement(slide, 'div', { class: 'idol-text-box' });
+      addPanelElement(caption, 'span', { class: 'idol-quote-content' }, idol.famousSaying || idol.name);
+      slide.style.visibility = 'hidden';
+      slides.push(slide);
+    }
+    if (!slides.length) return;
+    idolSection.className = 'idol-slider';
+    let current;
+    let timer;
+    function syncSlide() {
+      clearTimeout(timer);
+      const now = new Date();
+      const interval = 300000;
+      const localTime = now.getTime() - now.getTimezoneOffset() * 60000;
+      const next = slides[Math.floor(localTime / interval) % slides.length];
+      if (next !== current) {
+        if (current) current.style.visibility = 'hidden';
+        next.style.visibility = 'visible';
+        if (current && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          const timing = { duration: 350, easing: 'ease-in-out' };
+          current.animate([{ visibility: 'visible', transform: 'translateX(0)' },
+            { visibility: 'visible', transform: 'translateX(-100%)' }], timing);
+          next.animate([{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }], timing);
+        }
+        current = next;
+      }
+      if (slides.length > 1) timer = setTimeout(syncSlide, interval - localTime % interval);
+    }
+    syncSlide();
+    if (slides.length > 1) document.addEventListener('visibilitychange', syncSlide);
   }
   loadIdol().catch(error => console.warn('Position Manager idol panel:', error));
   const panelEl17 = addPanelElement(panelEl4, "div", {"class": "tracker-block"});
